@@ -1751,65 +1751,69 @@ contains
           c = filter_hydrologyc(fc)
           
           qflx_drain_perched(c) = 0._r8
-          if (frost_table(c) > zwt_perched(c)) then
+         if (frost_table(c) > zwt_perched(c)) then
          !-------------------------------------------------------------------KSA
              l = col%landunit(c)               
              g = col%gridcell(c)                
-	     if (lun%ncolumns(l) == 2) then     
-                c1=lun%coli(l)                  
-	        c2=lun%colf(l)                
-	        dztile2 = (initdztile2(g) + exice_subs_tot_acc(c2)) - exice_subs_tot_acc(c1) 
+	         if (lun%ncolumns(l) == 2) then     ! check for natural vegetated land unit? EB
+               c1=lun%coli(l)                  
+	            c2=lun%colf(l)                
+	            dztile2 = (initdztile2(g) + exice_subs_tot_acc(c2)) - exice_subs_tot_acc(c1) !check signs EB
                 
-                ! Calculate head gradient: is the water table height difference divided by the distance between tiles--> deltaH/deltaX KSA
-                head_gradient = (zwt_perched(c1)-(zwt_perched(c2)+dztile2)) / dx
+              ! Calculate head gradient: is the water table height difference divided by the distance between tiles--> deltaH/deltaX KSA
+               head_gradient = (zwt_perched(c1)-(zwt_perched(c2)+dztile2)) / dx ! Check signes
 
-                ! Calculate transmisivity = overlapping height of the highest perched water table 
-                transmis = 0._r8
-                ! if head gradient is positive--> water table of c1 is deeper and c2 is src, if negative--> water table in c2 is deeper
-                if (head_gradient>=0._r8) then
-                   c_dst=c1
-                   c_src=c2
-                   diff=-dztile2    !diff is what must be added to the source to make it equal to the destination depth
-                else
-                   c_dst=c2
-                   c_src=c1
-                   diff=dztile2
+             ! Calculate transmisivity = overlapping height of the highest perched water table 
+               transmis = 0._r8
+              ! if head gradient is positive--> water table of c1 is deeper and c2 is src, if negative--> water table in c2 is deeper
+               if (head_gradient>=0._r8) then
+                  c_dst=c1
+                  c_src=c2
+                  diff=-dztile2    !diff is what must be added to the source to make it equal to the destination depth
+               else
+                  c_dst=c2
+                  c_src=c1
+                diff=dztile2
+               endif
+
+               ! if k_perch equals k_frost, no perched saturated zone exists in the source tile
+               if(k_perch(c_src) < k_frost(c_src)) then
+                  do k = k_perch(c_src), k_frost(c_src)-1
+                   if(k == k_perch(c_src)) then !we must take the right depth of the layer k, maybe table is not the whole layer thickness
+                     transmis = transmis + 1.e-3_r8*hksat(c_src,k)*(zi(c_src,k) - zwt_perched(c_src))
+                   else
+                        if (z(c_src,k)+diff < frost_table(c_dst)) then !the source depth must be smaller than the frost table depth of the destination Check Signes
+                     !We have to think about how to compare/adjust the hights of the water table   
+                     transmis = transmis + 1.e-3_r8*hksat(c_src,k)*dz(c_src,k)
+                        endif
+                     endif
+                  enddo
                 endif
-                ! if k_perch equals k_frost, no perched saturated zone exists in the source tile
-                if(k_perch(c_src) < k_frost(c_src)) then
-                   do k = k_perch(c_src), k_frost(c_src)-1
-                      if(k == k_perch(c_src)) then !we must take the right depth of the layer k, maybe table is not the whole layer thickness
-                         transmis = transmis + 1.e-3_r8*hksat(c_src,k)*(zi(c_src,k) - zwt_perched(c_src))
-                      else
-                         if (z(c_src,k)+diff < frost_table(c_dst)) then !the source depth must be smaller than the frost table depth of the destination 
-                            transmis = transmis + 1.e-3_r8*hksat(c_src,k)*dz(c_src,k)
-                         endif
-                      endif
-                   enddo
-                endif
-                if c=c_dst
+            
+               if c=c_dst
                    qflx_drain_perched(c)=-abs(1.e3_r8*(transmis*dl*head_gradient/10._r8)) !10 must be replaced by area of c_dst
-                else
+               else
                    qflx_drain_perched(c)=abs(1.e3_r8*(transmis*dl*head_gradient/10._r8)) !10 must be replaced by area of c_src
-             else
-          !------------------------------------------------------------------KSA
-                ! specify maximum drainage rate
-                q_perch_max = params_inst%perched_baseflow_scalar &
+               endif  
+            
+            else
+              !------------------------------------------------------------------KSA
+               ! specify maximum drainage rate
+               q_perch_max = params_inst%perched_baseflow_scalar &
                      * sin(col%topo_slope(c) * (rpi/180._r8))
 
-                wtsub = 0._r8
-                q_perch = 0._r8
-                do k = k_perch(c), k_frost(c)-1
-                   q_perch = q_perch + hksat(c,k)*dz(c,k)
-                   wtsub = wtsub + dz(c,k)
-                end do
-                if (wtsub > 0._r8) q_perch = q_perch/wtsub
-
-                qflx_drain_perched(c) = q_perch_max * q_perch &
+               wtsub = 0._r8
+               q_perch = 0._r8
+               do k = k_perch(c), k_frost(c)-1
+                  q_perch = q_perch + hksat(c,k)*dz(c,k)
+                  wtsub = wtsub + dz(c,k)
+               end do
+               if (wtsub > 0._r8) q_perch = q_perch/wtsub
+            
+               qflx_drain_perched(c) = q_perch_max * q_perch &
                      *(frost_table(c) - zwt_perched(c))
-             endif     
-             
-          endif
+            endif
+         endif
        enddo
              
        ! remove drainage from soil moisture storage
