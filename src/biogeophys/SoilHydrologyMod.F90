@@ -1648,7 +1648,7 @@ contains
    !-----------------------------------------------------------------------
    subroutine PerchedLateralFlow(bounds, num_hydrologyc, filter_hydrologyc, &
         soilhydrology_inst, soilstate_inst, &
-        waterstatebulk_inst, waterfluxbulk_inst,  waterdiagnosticbulk_inst) ! KSA
+        waterstatebulk_inst, waterfluxbulk_inst, waterdiagnosticbulk_inst) ! KSA
      !
      ! !DESCRIPTION:
      ! Calculate subsurface drainage from perched saturated zone
@@ -1672,8 +1672,8 @@ contains
      !
      ! !LOCAL VARIABLES:
      character(len=32) :: subname = 'PerchedLateralFlow' ! subroutine name
-     integer  :: c,j,fc,i,c1,c2,g, c_src,c_dst           ! indices    KSA
-     real(r8) :: A1, A2                    ! Areas of representative permafrost tiles [m] KSA
+     integer  :: c,j,fc,i,c1,c2,g, c_src,c_dst,l         ! indices    KSA
+     real(r8) :: A1, A2                                  ! Areas of representative permafrost tiles [m] KSA
      real(r8) :: dtime                                   ! land model time step (sec)
      real(r8) :: wtsub                                   ! summation of hk*dzmm for layers below water table (mm**2/s)
      real(r8) :: h2osoi_vol
@@ -1709,10 +1709,10 @@ contains
           zwt                =>    soilhydrology_inst%zwt_col            , & ! Input:  [real(r8) (:)   ] water table depth (m)                             
           zwt_perched        =>    soilhydrology_inst%zwt_perched_col    , & ! Input:  [real(r8) (:)   ] perched water table depth (m)                     
           
-          qflx_drain_perched =>    waterfluxbulk_inst%qflx_drain_perched_col , & ! Output: [real(r8) (:)   ] perched wt sub-surface runoff (mm H2O /s)         
+          qflx_drain_perched =>    waterfluxbulk_inst%qflx_drain_perched_col   , & ! Output: [real(r8) (:)   ] perched wt sub-surface runoff (mm H2O /s)         
 
-          h2osoi_liq         =>    waterstatebulk_inst%h2osoi_liq_col        , & ! Output: [real(r8) (:,:) ] liquid water (kg/m2)                            
-          h2osoi_ice         =>    waterstatebulk_inst%h2osoi_ice_col          & ! Output: [real(r8) (:,:) ] ice lens (kg/m2)       
+          h2osoi_liq         =>    waterstatebulk_inst%h2osoi_liq_col          , & ! Output: [real(r8) (:,:) ] liquid water (kg/m2)                            
+          h2osoi_ice         =>    waterstatebulk_inst%h2osoi_ice_col          , & ! Output: [real(r8) (:,:) ] ice lens (kg/m2)       
                                    
           exice_subs_tot_acc =>    waterdiagnosticbulk_inst%exice_subs_tot_acc  & ! Input: [real(r8) (:) ]  subsidence due to excess ice melt (m)   KSA
           )
@@ -1751,7 +1751,8 @@ contains
           c = filter_hydrologyc(fc)
           
           qflx_drain_perched(c) = 0._r8
-         if (frost_table(c) > zwt_perched(c)) then
+          write(iulog,*) "c",c,frost_table(c),zwt_perched(c)
+          if (frost_table(c) > zwt_perched(c)) then
          !-------------------------------------------------------------------KSA
              l = col%landunit(c)               
              g = col%gridcell(c)                
@@ -1789,17 +1790,16 @@ contains
                      endif
                   enddo
                 endif
-            
-               if c=c_dst
+                if (c==c_dst) then
                    qflx_drain_perched(c)=-abs(1.e3_r8*(transmis*dl*head_gradient/10._r8)) !10 must be replaced by area of c_dst
                else
                    qflx_drain_perched(c)=abs(1.e3_r8*(transmis*dl*head_gradient/10._r8)) !10 must be replaced by area of c_src
-               endif  
-            
-            else
-              !------------------------------------------------------------------KSA
-               ! specify maximum drainage rate
-               q_perch_max = params_inst%perched_baseflow_scalar &
+                endif
+                write(iulog,*) "c",c,"c1",c1,"c2",c2,"dztile2",dztile2,"head_gradient",head_gradient,"transmis",transmis
+             else
+          !------------------------------------------------------------------KSA
+                ! specify maximum drainage rate
+                q_perch_max = params_inst%perched_baseflow_scalar &
                      * sin(col%topo_slope(c) * (rpi/180._r8))
 
                wtsub = 0._r8
