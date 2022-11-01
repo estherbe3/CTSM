@@ -3043,8 +3043,8 @@ end subroutine SetMatrix_Snow
          !Update elevation of tile2 relative to tile1
          dztile2 = initdztile2(g) + exice_subs_tot_acc(c2) - exice_subs_tot_acc(c1)                
 
-         j1=1
-         j2=1
+         j1=5
+         j2=5
          tl1ztop = 0.0_r8
          tl2ztop = 0.0_r8
          tl1zbot = 0.0_r8
@@ -3060,24 +3060,24 @@ end subroutine SetMatrix_Snow
             tl1zbot = zi(c1,j1) 
             tl2ztop = zi(c2,j2) - dz(c2,j2) + dztile2 !top of tile2 relative to tile1
             tl2zbot = zi(c2,j2) + dztile2    
-
+            !write(iulog,*) 'height_tiles',tl1ztop,tl2ztop,dztile2
             dzhhf = min(tl1zbot,tl2zbot)-max(tl1ztop,tl2ztop) !calculate thickness of overlaping part of layer j1 and j2
 
             if (dzhhf<0.0_r8) then !dzhhf will be negative if there is no interface, so flux should be zero. 
                dzhhf = 0.0_r8
             end if               
             
-            thk_int = (thk(c1,j1)*thk(c2,j2))/(thk(c1,j1)+thk(c2,j2)) 
+            thk_int = (thk(c1,j1)*thk(c2,j2))/(thk(c1,j1)+thk(c2,j2))
             
             !calculate horizontal heat flux through interface (from tile2 to tile1)
-            hhf_interface = thk_int * (t_soisno(c2,j2) - t_soisno(c1,j1)) / dx 
- 
+            hhf_interface = thk_int * (t_soisno(c2,j2) - t_soisno(c1,j1)) / dx
+
             !Scale flux to tile area and add to flux arrays
             hhf1(j1) = hhf1(j1) + hhf_interface * dzhhf * dl / A1
             hhf2(j2) = hhf2(j2) - hhf_interface * dzhhf * dl / A2
-            if (j1==18) then
-               write(iulog,*) 'middle_18',hhf_interface,'temp_diff',t_soisno(c2,j2) - t_soisno(c1,j1)
-            endif
+            !if (j1==18) then
+            !   write(iulog,*) 'middle_18',hhf_interface,'temp_diff',t_soisno(c2,j2) - t_soisno(c1,j1)
+            !endif
             !update index
             if (tl1zbot < tl2zbot) then 
                j1=j1+1
@@ -3093,21 +3093,21 @@ end subroutine SetMatrix_Snow
                endif
             endif
          enddo !layer loop
-         !write(iulog,*) 'after',hhf1(18)
       endif
 
       eflx_lateral_col(c1) = 0.0_r8
       eflx_lateral_col(c2) = 0.0_r8      
-   ! Update temperatures based on heat fluxes
+      ! Update temperatures based on heat fluxes
       do j = 1,nlevmaxurbgrnd
          t_soisno(c1,j) = t_soisno(c1,j) + hhf1(j) * dtime / cv(c1,j)
          t_soisno(c2,j) = t_soisno(c2,j) + hhf2(j) * dtime / cv(c2,j)
+         !write(iulog,*) 'soilt',t_soisno(c1,j),t_soisno(c2,j)
          eflx_lateral_col(c1) = eflx_lateral_col(c1) + hhf1(j)
          eflx_lateral_col(c2) = eflx_lateral_col(c2) + hhf2(j)
       enddo
-   ! Output lateral heat flux (per layer or pr column)
-   enddo !grid cell loop
-
+      !Output lateral heat flux (per layer or pr column)
+   enddo !grid cell loop         
+   !write(iulog,*) 'heat',eflx_lateral_col(c1),eflx_lateral_col(c2)
    end associate 
 
   end subroutine LateralHeatFlux
