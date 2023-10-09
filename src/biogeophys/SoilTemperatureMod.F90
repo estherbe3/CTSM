@@ -575,7 +575,8 @@ contains
          c = filter_nolakec(fc)
          l = col%landunit(c)
          eflx_fgr12(c)= 0._r8
-      end do
+     end do
+
 
       ! Calculate soil heat content and soil plus snow heat content
 
@@ -611,12 +612,13 @@ contains
     ! snow/soil layers
     ! (1) The volumetric heat capacity is calculated as a linear combination
     !     in terms of the volumetric fraction of the constituent phases.
-    !
-    ! (2) The thermal conductivity of soil is computed from the algorithm of
-    !     Johansen (as reported by Farouki 1981), and of snow is from the
+    !   2) The thermal conductivity of soil is computed from the algorithm of
+    !    Johansen (as reported by Farouki 1981), and of snow is from the
     !     formulation used in SNTHERM (Jordan 1991).
     ! The thermal conductivities at the interfaces between two neighboring
     ! layers (j, j+1) are derived from an assumption that the flux across
+
+    !CTSM_ExcessIce
     ! the interface is equal to that from the node j to the interface and the
     ! flux from the interface to the node j+1.
     !
@@ -3040,6 +3042,9 @@ end subroutine SetMatrix_Snow
          c2=lun%colf(l)
          A1=col%a_tile(c1)
          A2=col%a_tile(c2)
+
+         write(iulog,*) 'AreaTile1',A1
+         write(iulog,*) 'AreaTile2', A2
 
          !Update elevation of tile2 relative to tile1
          dztile2 = initdztile2(g) + exice_subs_tot_acc(c2) - exice_subs_tot_acc(c1)                
