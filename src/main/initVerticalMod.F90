@@ -100,6 +100,7 @@ contains
     real(r8) ,pointer     :: tslope (:)        ! read in - topo_slope 
     real(r8)              :: slope0            ! temporary
     integer               :: ier               ! error status
+    real(r8) , pointer    :: Areatiles_in (:,:) ! Area of the Tiles for TIling approach ESB
     real(r8)              :: scalez = 0.025_r8 ! Soil layer thickness discretization (m)
     real(r8)              :: thick_equal = 0.2
     character(len=20)     :: calc_method       ! soil layer calculation method
@@ -699,6 +700,24 @@ contains
        col%topo_std(c) = std(g)
     end do
     deallocate(std)
+
+    !-----------------------------------------------
+    ! Read in Area and distance parameter for tiling: ESB
+    !-----------------------------------------------
+
+    !if (use_excess_ice_tiles) then
+      allocate(Areatiles_in(2,1))
+      call ncd_io(ncid=ncid, varname='AREA_TILES', flag='read', data=Areatiles_in, dim1name=grlnd, readvar=readvar)
+      if (.not. readvar) then 
+         call shr_sys_abort(' ERROR: AREA_TILES NOT on surfdata file'//&
+            errMsg(sourcefile, __LINE__)) 
+      endif 
+      do c = begc, endc
+         g = col%gridcell(c)
+         col%a_tile(c) = Areatiles_in(g,1)
+      end do
+      deallocate(Areatiles_in)
+    !endif
 
     !-----------------------------------------------
     ! SCA shape function defined
