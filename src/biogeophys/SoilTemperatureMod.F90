@@ -3030,21 +3030,22 @@ end subroutine SetMatrix_Snow
    dx = 2.0_r8   ! Will be read from file
    dl = 10.0_r8  ! Will be read from file
    initdztile2(bounds%begg:bounds%endg) = 0.5_r8 ! Will be read from file
-   !A1 = 10.0_r8  ! Will be read from file
-   !A2 = 10.0_r8  ! Will be read from file
+   A1 = 10.0_r8  ! Will be read from file
+   A2 = 10.0_r8  ! Will be read from file
 
    dztile2 = 0.0_r8 !
+   !write(iulog,*) col%a_tile
 
    do g = bounds%begg,bounds%endg
       l = grc%landunit_indices(istsoil,g)            
       if (lun%ncolumns(l) == 2) then
          c1=lun%coli(l)
          c2=lun%colf(l)
-         A1=col%a_tile(c1)
-         A2=col%a_tile(c2)
+         !A1=col%a_tile(c1)
+         !A2=col%a_tile(c2)
 
-         write(iulog,*) 'AreaTile1',A1
-         write(iulog,*) 'AreaTile2', A2
+        ! write(iulog,*) 'AreaTile1',A1
+        ! write(iulog,*) 'AreaTile2', A2
 
          !Update elevation of tile2 relative to tile1
          dztile2 = initdztile2(g) + exice_subs_tot_acc(c2) - exice_subs_tot_acc(c1)                

@@ -75,7 +75,7 @@ module ColumnType
 
      !Colum Characteristics for Excess Ice Calculations
 
-     real(r8), pointer :: a_tile                (:)  ! Area of the Tile for Excess Ice Tiling 
+     real(r8), pointer :: a_tile                (:,:)  ! Area of the Tile for Excess Ice Tiling 
      !real(r8), pointer :: DisT_l                (:)  ! Distance to other tile l
      !real(r8), pointer :: DisT_x                (:)  ! Distance to tile x
 
@@ -148,7 +148,7 @@ contains
     allocate(this%urbpoi      (begc:endc))                     ; this%urbpoi      (:)   = .false.
 
     !if (use_excess_ice_tiles) then
-    allocate(this%a_tile    (begc:endc))                     ;this%a_tile       (:)   = nan !read in geometrical variables for tiling
+    allocate(this%a_tile    (begc:endc,2))                     ;this%a_tile       (:,2)   = nan !read in geometrical variables for tiling
     !endif
 
   end subroutine Init

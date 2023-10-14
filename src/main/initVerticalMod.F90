@@ -101,6 +101,7 @@ contains
     real(r8)              :: slope0            ! temporary
     integer               :: ier               ! error status
     real(r8) , pointer    :: Areatiles_in (:,:) ! Area of the Tiles for TIling approach ESB
+    integer               :: nb_tiles           !read in number of tiles
     real(r8)              :: scalez = 0.025_r8 ! Soil layer thickness discretization (m)
     real(r8)              :: thick_equal = 0.2
     character(len=20)     :: calc_method       ! soil layer calculation method
@@ -706,15 +707,19 @@ contains
     !-----------------------------------------------
 
     !if (use_excess_ice_tiles) then
-      allocate(Areatiles_in(2,1))
+     ! allocate(Areatiles_in(bounds%begg:bounds%endg,1:nb_tiles))
+     ! allocate(Areatiles_in(1:nb_tiles,bounds%begg:bounds%endg))
+    allocate(Areatiles_in(2))
       call ncd_io(ncid=ncid, varname='AREA_TILES', flag='read', data=Areatiles_in, dim1name=grlnd, readvar=readvar)
       if (.not. readvar) then 
          call shr_sys_abort(' ERROR: AREA_TILES NOT on surfdata file'//&
             errMsg(sourcefile, __LINE__)) 
       endif 
+      write(iulog,*) 'Areatiles_in:', Areatiles_in
       do c = begc, endc
          g = col%gridcell(c)
-         col%a_tile(c) = Areatiles_in(g,1)
+         col%a_tile(c,1:2) = Areatiles_in(0:2)
+         write(iulog,*) 'column_atile', col%a_tile
       end do
       deallocate(Areatiles_in)
     !endif
