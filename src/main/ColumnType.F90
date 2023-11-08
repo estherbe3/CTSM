@@ -148,7 +148,7 @@ contains
     allocate(this%urbpoi      (begc:endc))                     ; this%urbpoi      (:)   = .false.
 
     !if (use_excess_ice_tiles) then
-    allocate(this%a_tile    (begc:endc,2))                     ;this%a_tile       (:,2)   = nan !read in geometrical variables for tiling
+    allocate(this%a_tile    (begc:endc,2))                     ;this%a_tile       (:,:)   = nan !read in geometrical variables for tiling
     !endif
 
   end subroutine Init

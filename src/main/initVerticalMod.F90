@@ -709,20 +709,20 @@ contains
     !if (use_excess_ice_tiles) then
      ! allocate(Areatiles_in(bounds%begg:bounds%endg,1:nb_tiles))
      ! allocate(Areatiles_in(1:nb_tiles,bounds%begg:bounds%endg))
-    allocate(Areatiles_in(2))
-      call ncd_io(ncid=ncid, varname='AREA_TILES', flag='read', data=Areatiles_in, dim1name=grlnd, readvar=readvar)
-      if (.not. readvar) then 
-         call shr_sys_abort(' ERROR: AREA_TILES NOT on surfdata file'//&
-            errMsg(sourcefile, __LINE__)) 
-      endif 
-      write(iulog,*) 'Areatiles_in:', Areatiles_in
-      do c = begc, endc
-         g = col%gridcell(c)
-         col%a_tile(c,1:2) = Areatiles_in(0:2)
-         write(iulog,*) 'column_atile', col%a_tile
-      end do
-      deallocate(Areatiles_in)
-    !endif
+    allocate(Areatiles_in(bounds%begg:bounds%endg,2))
+    call ncd_io(ncid=ncid, varname='AREA_TILES', flag='read', data=Areatiles_in, dim1name=grlnd, readvar=readvar)
+    if (.not. readvar) then 
+       call shr_sys_abort(' ERROR: AREA_TILES NOT on surfdata file'//&
+          errMsg(sourcefile, __LINE__)) 
+    endif 
+    write(iulog,*) 'Areatiles_in:', Areatiles_in
+    do c = begc, endc
+       g = col%gridcell(c)
+       col%a_tile(c,:) = Areatiles_in(g,:)
+       write(iulog,*) 'column_atile', col%a_tile
+    end do
+    deallocate(Areatiles_in)
+  ! SCA shape function defined
 
     !-----------------------------------------------
     ! SCA shape function defined
