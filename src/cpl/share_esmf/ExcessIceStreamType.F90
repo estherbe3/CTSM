@@ -29,13 +29,14 @@ module ExcessIceStreamType
   implicit none
   private
 
+  public  :: UseExcessIceStreams      ! If streams will be used
+
   type, public :: excessicestream_type
      real(r8), pointer, private :: exice_bulk  (:)         ! excess ice bulk value (-)
   contains
 
       ! !PUBLIC MEMBER FUNCTIONS:
       procedure, public  :: Init            ! Initialize and read data in
-      procedure, private :: UseStreams      ! If streams will be used
       procedure, public  :: CalcExcessIce   ! Calculate excess ice ammount
 
       ! !PRIVATE MEMBER FUNCTIONS:
@@ -51,6 +52,7 @@ module ExcessIceStreamType
      procedure, private :: ReadNML     ! Read in namelist
   end type streamcontrol_type
 
+  logical :: namelist_read = .false.
   type(streamcontrol_type), private :: control        ! Stream control data
 
   character(len=*), parameter, private :: sourcefile = &
@@ -90,12 +92,13 @@ contains
 
     call this%InitAllocate( bounds )
     call control%ReadNML( bounds, NLFileName )
-    if ( this%useStreams() )then
+    if ( UseExcessIceStreams() )then
       allocate(stream_varnames(1))
             stream_varnames = (/"EXICE"/)
       
       if (masterproc) then
         write(iulog,*) '  stream_varnames                  = ',stream_varnames
+        write(iulog,*) '  Values will be used if the variable is not on the initial conditions dataset'
       end if
 
       call shr_strdata_init_from_inline(sdat_exice,                                    &
@@ -236,7 +239,7 @@ contains
 
   end subroutine CalcExcessIce
 
-  logical function UseStreams(this)
+  logical function UseExcessIceStreams()
   !
   ! !DESCRIPTION:
   ! Return true if
@@ -245,15 +248,17 @@ contains
   !
   ! !ARGUMENTS:
   implicit none
-  class(excessicestream_type) :: this
   !
   ! !LOCAL VARIABLES:
-  if ( trim(control%stream_fldFileName_exice) == '' )then
-     UseStreams = .false.
-  else
-     UseStreams = .true.
+  if ( .not. namelist_read ) then
+      call endrun(msg=' ERROR UseExcessIceStreams being called, but namelist has not been read yet'//errMsg(sourcefile, __LINE__))
   end if
-end function UseStreams
+  if ( trim(control%stream_fldFileName_exice) == '' )then
+     UseExcessIceStreams = .false.
+  else
+     UseExcessIceStreams = .true.
+  end if
+end function UseExcessIceStreams
 
 subroutine ReadNML(this, bounds, NLFilename)
   !
@@ -273,6 +278,7 @@ subroutine ReadNML(this, bounds, NLFilename)
   ! local variables
   integer            :: nu_nml    ! unit for namelist file
   integer            :: nml_error ! namelist i/o error flag
+  logical            :: use_excess_ice_streams = .false.         ! logical to turn on use of excess ice streams
   character(len=CL)  :: stream_fldFileName_exice = ' '
   character(len=CL)  :: stream_meshfile_exice = ' '
   character(len=CL)  :: stream_mapalgo_exice = 'bilinear'
@@ -281,7 +287,7 @@ subroutine ReadNML(this, bounds, NLFilename)
   !-----------------------------------------------------------------------
 
   namelist /exice_streams/ &               ! MUST agree with namelist_name above
-       stream_mapalgo_exice,  stream_fldFileName_exice, stream_meshfile_exice
+       stream_mapalgo_exice,  stream_fldFileName_exice, stream_meshfile_exice, use_excess_ice_streams
 
   ! Default values for namelist
 
@@ -300,20 +306,33 @@ subroutine ReadNML(this, bounds, NLFilename)
      close(nu_nml)
   endif
 
+  call shr_mpi_bcast(use_excess_ice_streams   , mpicom)
   call shr_mpi_bcast(stream_mapalgo_exice     , mpicom)
   call shr_mpi_bcast(stream_fldFileName_exice , mpicom)
   call shr_mpi_bcast(stream_meshfile_exice    , mpicom)
 
   if (masterproc) then
      write(iulog,*) ' '
-     write(iulog,*) namelist_name, ' stream settings:'
-     write(iulog,*) '  stream_fldFileName_exice = ',stream_fldFileName_exice
-     write(iulog,*) '  stream_meshfile_exice    = ',stream_meshfile_exice
-     write(iulog,*) '  stream_mapalgo_exice     = ',stream_mapalgo_exice
+     if ( use_excess_ice_streams ) then
+        write(iulog,*) 'excess ice streams are enabled: '
+        write(iulog,*) namelist_name, ' stream settings:'
+        write(iulog,*) '  stream_fldFileName_exice = ',stream_fldFileName_exice
+        write(iulog,*) '  stream_meshfile_exice    = ',stream_meshfile_exice
+        write(iulog,*) '  stream_mapalgo_exice     = ',stream_mapalgo_exice
+        if ( trim(stream_fldFileName_exice) == '' )then
+            call endrun(msg=' ERROR excess ice streams are on, but stream_fldFileName_exice is NOT set'//errMsg(sourcefile, __LINE__))
+        end if
+     else
+        write(iulog,*) 'excess ice streams are off'
+        if ( trim(stream_fldFileName_exice) /= '' )then
+            call endrun(msg=' ERROR excess ice streams are off, but stream_fldFileName_exice is set'//errMsg(sourcefile, __LINE__))
+        end if
+     end if
   endif
   this%stream_fldFileName_exice = stream_fldFileName_exice
   this%stream_meshfile_exice    = stream_meshfile_exice
   this%stream_mapalgo_exice     = stream_mapalgo_exice
+  namelist_read                 = .true.
 
 end subroutine ReadNML
 

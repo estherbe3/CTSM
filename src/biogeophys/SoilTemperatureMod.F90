@@ -89,7 +89,8 @@ module SoilTemperatureMod
 contains
 
   !-----------------------------------------------------------------------
-  subroutine SoilTemperature(bounds, num_urbanl, filter_urbanl, num_urbanc, filter_urbanc, num_nolakec, filter_nolakec, &
+  subroutine SoilTemperature(bounds, num_urbanl, filter_urbanl, num_urbanc, filter_urbanc, &
+       num_nolakep, filter_nolakep, num_nolakec, filter_nolakec, &
        atm2lnd_inst, urbanparams_inst, canopystate_inst, waterstatebulk_inst, waterdiagnosticbulk_inst, waterfluxbulk_inst,&
        solarabs_inst, soilstate_inst, energyflux_inst,  temperature_inst, urbantv_inst)
     !
@@ -115,7 +116,7 @@ contains
     ! !USES:
     use clm_time_manager         , only : get_step_size_real
     use clm_varpar               , only : nlevsno, nlevgrnd, nlevurb, nlevmaxurbgrnd
-    use clm_varctl               , only : iulog, use_excess_ice_tiles
+    use clm_varctl               , only : iulog, use_excess_ice, use_excess_ice_tiles
     use clm_varcon               , only : cnfac, cpice, cpliq, denh2o, denice
     use landunit_varcon          , only : istsoil, istcrop
     use column_varcon            , only : icol_roof, icol_sunwall, icol_shadewall, icol_road_perv, icol_road_imperv
@@ -125,6 +126,8 @@ contains
     !
     ! !ARGUMENTS:
     type(bounds_type)              ,  intent(in)    :: bounds
+    integer                        ,  intent(in)    :: num_nolakep       ! number of non-lake points in patch filter
+    integer                        ,  intent(in)    :: filter_nolakep(:) ! patch filter for non-lake points
     integer                        ,  intent(in)    :: num_nolakec       ! number of column non-lake points in column filter
     integer                        ,  intent(in)    :: filter_nolakec(:) ! column filter for non-lake points
     integer                        ,  intent(in)    :: num_urbanl        ! number of urban landunits in clump
@@ -144,8 +147,8 @@ contains
     type(temperature_type)         ,  intent(inout) :: temperature_inst
     !
     ! !LOCAL VARIABLES:
-    integer  :: j,c,l,g,pi                                               ! indices
-    integer  :: fc                                                       ! lake filtered column indices
+    integer  :: j,c,l,g                                                  ! indices
+    integer  :: fc, fp                                                   ! lake filtered column & patch indices
     integer  :: fl                                                       ! urban filtered landunit indices
     integer  :: jtop(bounds%begc:bounds%endc)                            ! top level at each column
     real(r8) :: dtime                                                    ! land model time step (sec)
@@ -281,24 +284,24 @@ contains
       !--------------------------------------------------------------
       ! Vertical coordinates adjustment for excess ice calculations
       !--------------------------------------------------------------
-      ! Save original soil depth to get put them back in et the end 
-      dz_0(begc:endc,-nlevsno+1:nlevmaxurbgrnd)=dz(begc:endc,-nlevsno+1:nlevmaxurbgrnd)
-      zi_0(begc:endc,-nlevsno+0:nlevmaxurbgrnd)=zi(begc:endc,-nlevsno+0:nlevmaxurbgrnd)
-      z_0(begc:endc,-nlevsno+1:nlevmaxurbgrnd)=z(begc:endc,-nlevsno+1:nlevmaxurbgrnd)
-      ! Adjust column depth for excess ice thickness 
-      do fc = 1,num_nolakec
-        c = filter_nolakec(fc)
-        l = col%landunit(c)
-        if( lun%itype(l) == istsoil .or. lun%itype(l) == istcrop ) then
-          dz(c,1:nlevmaxurbgrnd)=dz(c,1:nlevmaxurbgrnd)+excess_ice(c,1:nlevmaxurbgrnd)/denice ! add extra layer thickness
-          do j=1,nlevmaxurbgrnd ! if excess ice amount dropped to zero there will be no adjustment
-            zi(c,j) = zi(c,j) + sum(excess_ice(c,1:j)) / denice
-            z(c,j) = (zi(c,j-1) + zi(c,j)) * 0.5_r8
-          end do
-        endif
-      end do
-
-
+      if ( use_excess_ice ) then
+         ! Save original soil depth to get put them back in et the end 
+         dz_0(begc:endc,-nlevsno+1:nlevmaxurbgrnd) = dz(begc:endc,-nlevsno+1:nlevmaxurbgrnd)
+         zi_0(begc:endc,-nlevsno+0:nlevmaxurbgrnd) = zi(begc:endc,-nlevsno+0:nlevmaxurbgrnd)
+         z_0(begc:endc,-nlevsno+1:nlevmaxurbgrnd) = z(begc:endc,-nlevsno+1:nlevmaxurbgrnd)
+         ! Adjust column depth for excess ice thickness 
+         do fc = 1, num_nolakec
+            c = filter_nolakec(fc)
+            l = col%landunit(c)
+            if (lun%itype(l) == istsoil .or. lun%itype(l) == istcrop) then
+               dz(c,1:nlevmaxurbgrnd) = dz(c,1:nlevmaxurbgrnd) + excess_ice(c,1:nlevmaxurbgrnd) / denice  ! add extra layer thickness
+               do j = 1, nlevmaxurbgrnd ! if excess ice amount dropped to zero there will be no adjustment
+                  zi(c,j) = zi(c,j) + sum(excess_ice(c,1:j)) / denice
+                  z(c,j) = (zi(c,j-1) + zi(c,j)) * 0.5_r8
+               end do
+            end if
+         end do
+      end if
 
       !------------------------------------------------------
       ! Compute ground surface and soil temperatures
@@ -317,7 +320,8 @@ contains
       ! Added a patches loop here to get the average of hs and dhsdT over
       ! all Patches on the column. Precalculate the terms that do not depend on PFT.
 
-      call ComputeGroundHeatFluxAndDeriv(bounds, num_nolakec, filter_nolakec, &
+      call ComputeGroundHeatFluxAndDeriv(bounds, &
+           num_nolakep, filter_nolakep, num_nolakec, filter_nolakec,          &
            hs_h2osfc( begc:endc ),                                            &
            hs_top_snow( begc:endc ),                                          &
            hs_soil( begc:endc ),                                              &
@@ -528,17 +532,18 @@ contains
       ! Vertical coordinates adjustment for excess ice calculations
       !--------------------------------------------------------------
       ! bringing back the soil depth to the original state
-           ! Adjust column depth for excess ice thickness 
-           do fc = 1,num_nolakec
-             c = filter_nolakec(fc)
-             l = col%landunit(c)
-             if( lun%itype(l) == istsoil .or. lun%itype(l) == istcrop ) then
+      if (use_excess_ice) then
+         ! Adjust column depth for excess ice thickness 
+         do fc = 1, num_nolakec
+            c = filter_nolakec(fc)
+            l = col%landunit(c)
+            if (lun%itype(l) == istsoil .or. lun%itype(l) == istcrop) then
                dz(c,1:nlevmaxurbgrnd)=dz_0(c,1:nlevmaxurbgrnd)
                zi(c,1:nlevmaxurbgrnd)=zi_0(c,1:nlevmaxurbgrnd)
                z(c,1:nlevmaxurbgrnd)=z_0(c,1:nlevmaxurbgrnd)
-             endif
-           end do
-     
+            end if
+         end do
+      end if
 
 
       if ( IsProgBuildTemp() )then
@@ -710,7 +715,6 @@ contains
                   col%itype(c) /= icol_roof .and. col%itype(c) /= icol_road_imperv) .or. &
                   (col%itype(c) == icol_road_imperv .and. j > nlev_improad(l))) then
 
-                !TODO recalculate watsat and satw to have excess ice included
                   satw = (h2osoi_liq(c,j)/denh2o + h2osoi_ice(c,j)/denice +excess_ice(c,j)/denice)/(dz(c,j)*watsat(c,j))
                   satw = min(1._r8, satw)
                   if (satw > .1e-6_r8) then
@@ -1139,7 +1143,7 @@ contains
     real(r8) :: temp1                              !temporary variables [kg/m2]
     real(r8) :: hm(bounds%begc:bounds%endc,-nlevsno+1:nlevmaxurbgrnd)    !energy residual [W/m2]
     real(r8) :: xm(bounds%begc:bounds%endc,-nlevsno+1:nlevmaxurbgrnd)    !melting or freezing within a time step [kg/m2]
-    real(r8) :: xm2(bounds%begc:bounds%endc,-nlevsno+1:nlevgrnd)         !additional melting or freezing within a time step [kg/m2] (needed for excess ice melt)
+    real(r8) :: xm2(bounds%begc:bounds%endc,-nlevsno+1:nlevmaxurbgrnd)   !additional melting or freezing within a time step [kg/m2] (needed for excess ice melt)
     real(r8) :: wmass0(bounds%begc:bounds%endc,-nlevsno+1:nlevmaxurbgrnd)!initial mass of ice and liquid (kg/m2)
     real(r8) :: wice0 (bounds%begc:bounds%endc,-nlevsno+1:nlevmaxurbgrnd)!initial mass of ice (kg/m2)
     real(r8) :: wliq0 (bounds%begc:bounds%endc,-nlevsno+1:nlevmaxurbgrnd)!initial mass of liquid (kg/m2)
@@ -1147,7 +1151,7 @@ contains
     real(r8) :: propor                                                   !proportionality constant (-)
     real(r8) :: tinc(bounds%begc:bounds%endc,-nlevsno+1:nlevmaxurbgrnd)  !t(n+1)-t(n) [K]
     real(r8) :: smp                                                      !frozen water potential (mm)
-    real(r8) :: wexice0(bounds%begc:bounds%endc,-nlevsno+1:nlevgrnd)     !initial mass of excess_ice at the timestep (kg/m2)
+    real(r8) :: wexice0(bounds%begc:bounds%endc,-nlevsno+1:nlevmaxurbgrnd) !initial mass of excess_ice at the timestep (kg/m2)
 
 
     !-----------------------------------------------------------------------
@@ -1178,6 +1182,7 @@ contains
          qflx_snofrz_lyr  =>    waterfluxbulk_inst%qflx_snofrz_lyr_col  , & ! Output: [real(r8) (:,:) ] snow freezing rate (positive definite) (col,lyr) [kg m-2 s-1]
          qflx_snofrz      =>    waterfluxbulk_inst%qflx_snofrz_col      , & ! Output: [real(r8) (:)   ] column-integrated snow freezing rate (positive definite) [kg m-2 s-1]
          qflx_snomelt     =>    waterfluxbulk_inst%qflx_snomelt_col     , & ! Output: [real(r8) (:)   ] snow melt (mm H2O /s)
+         snomelt_accum    =>    waterdiagnosticbulk_inst%snomelt_accum_col , & ! Output: [real(r8) (:)   ] accumulated snow melt (m)
          qflx_snomelt_lyr =>    waterfluxbulk_inst%qflx_snomelt_lyr_col , & ! Output: [real(r8) (:)   ] snow melt in each layer (mm H2O /s)
          
          eflx_snomelt     =>    energyflux_inst%eflx_snomelt_col    , & ! Output: [real(r8) (:)   ] snow melt heat flux (W/m**2)
@@ -1216,13 +1221,13 @@ contains
                imelt(c,j) = 0
                hm(c,j) = 0._r8
                xm(c,j) = 0._r8
-               xm2(c,j)=0._r8
+               xm2(c,j) = 0._r8
                wice0(c,j) = h2osoi_ice(c,j)
                wliq0(c,j) = h2osoi_liq(c,j)
-               wexice0(c,j)=excess_ice(c,j)
+               wexice0(c,j) = excess_ice(c,j)
                wmass0(c,j) = h2osoi_ice(c,j) + h2osoi_liq(c,j) + wexice0(c,j)
-               if (j>=1) then
-                  exice_subs_col(c,j)=0._r8
+               if (j >= 1) then
+                  exice_subs_col(c,j) = 0._r8
                endif
             endif   ! end of snow layer if-block
 
@@ -1242,7 +1247,7 @@ contains
 
                ! Melting identification
                ! If ice exists above melt point, melt some to liquid.
-               if (h2osoi_ice(c,j) > 0._r8 .AND. t_soisno(c,j) > tfrz) then
+               if (h2osoi_ice(c,j) > 0._r8 .and. t_soisno(c,j) > tfrz) then
                   imelt(c,j) = 1
                   !                tinc(c,j) = t_soisno(c,j) - tfrz 
                   tinc(c,j) = tfrz - t_soisno(c,j) 
@@ -1415,11 +1420,11 @@ contains
                         if (j <= 0) then
                            h2osoi_ice(c,j) = min(wmass0(c,j), wice0(c,j)-xm(c,j))  ! snow
                         else
-                          if (wmass0(c,j) - wexice0(c,j) < supercool(c,j)) then !even if excess ice is present, it cannot refreeze
-                             h2osoi_ice(c,j) = 0._r8
-                          else
-                             h2osoi_ice(c,j) = min(wmass0(c,j) - wexice0(c,j) - supercool(c,j),wice0(c,j)-xm(c,j))
-                          endif
+                           if (wmass0(c,j) - wexice0(c,j) < supercool(c,j)) then  ! even if excess ice is present, it cannot refreeze
+                              h2osoi_ice(c,j) = 0._r8
+                           else
+                              h2osoi_ice(c,j) = min(wmass0(c,j) - wexice0(c,j) - supercool(c,j),wice0(c,j)-xm(c,j))
+                           endif
                         endif
                         heatr = hm(c,j) - hfus*(wice0(c,j)-h2osoi_ice(c,j))/dtime
                      endif
@@ -1468,6 +1473,7 @@ contains
                      if (imelt(c,j) == 1 .AND. j < 1) then
                         qflx_snomelt_lyr(c,j) = max(0._r8,(wice0(c,j)-h2osoi_ice(c,j)))/dtime
                         qflx_snomelt(c)       = qflx_snomelt(c) + qflx_snomelt_lyr(c,j)
+                        snomelt_accum(c)      = snomelt_accum(c) + qflx_snomelt_lyr(c,j) * dtime * 1.e-3_r8
                      endif
 
                      ! layer freezing mass flux (positive):
@@ -1505,7 +1511,8 @@ contains
   end subroutine Phasechange_beta
 
   !-----------------------------------------------------------------------
-  subroutine ComputeGroundHeatFluxAndDeriv(bounds, num_nolakec, filter_nolakec, &
+  subroutine ComputeGroundHeatFluxAndDeriv(bounds, &
+       num_nolakep, filter_nolakep, num_nolakec, filter_nolakec, &
        hs_h2osfc, hs_top_snow, hs_soil, hs_top, dhsdT, sabg_lyr_col, &
        atm2lnd_inst, urbanparams_inst, canopystate_inst, waterdiagnosticbulk_inst, &
        waterfluxbulk_inst, solarabs_inst, energyflux_inst, temperature_inst)
@@ -1521,12 +1528,14 @@ contains
     ! !USES:
     use clm_varcon     , only : sb, hvap
     use column_varcon  , only : icol_road_perv, icol_road_imperv
-    use clm_varpar     , only : nlevsno, max_patch_per_col
+    use clm_varpar     , only : nlevsno
     use UrbanParamsType, only : IsSimpleBuildTemp, IsProgBuildTemp
     !
     ! !ARGUMENTS:
     implicit none
     type(bounds_type)      , intent(in)    :: bounds                                    ! bounds
+    integer                , intent(in)    :: num_nolakep                               ! number of non-lake points in patch filter
+    integer                , intent(in)    :: filter_nolakep( : )                       ! patch filter for non-lake points
     integer                , intent(in)    :: num_nolakec                               ! number of column non-lake points in column filter
     integer                , intent(in)    :: filter_nolakec( : )                       ! column filter for non-lake points
     real(r8)               , intent(out)   :: hs_h2osfc( bounds%begc: )                 ! heat flux on standing water [W/m2]
@@ -1545,8 +1554,8 @@ contains
     type(temperature_type) , intent(in)    :: temperature_inst
     !
     ! !LOCAL VARIABLES:
-    integer  :: j,c,p,l,g,pi                                           ! indices
-    integer  :: fc                                                     ! lake filtered column indices
+    integer  :: j,c,p,l,g                                              ! indices
+    integer  :: fc, fp                                                 ! lake filtered column and patch indices
     real(r8) :: hs(bounds%begc:bounds%endc)                            ! net energy flux into the surface (w/m2)
     real(r8) :: lwrad_emit(bounds%begc:bounds%endc)                    ! emitted longwave radiation
     real(r8) :: dlwrad_emit(bounds%begc:bounds%endc)                   ! time derivative of emitted longwave radiation
@@ -1638,79 +1647,71 @@ contains
       hs_h2osfc(begc:endc) = 0._r8
       hs(begc:endc)        = 0._r8
       dhsdT(begc:endc)     = 0._r8
-      do pi = 1,max_patch_per_col
-         do fc = 1,num_nolakec
-            c = filter_nolakec(fc)
-            if ( pi <= col%npatches(c) ) then
-               p = col%patchi(c) + pi - 1
-               l = patch%landunit(p)
-               g = patch%gridcell(p)
+      do fp = 1,num_nolakep
+         p = filter_nolakep(fp)
+         c = patch%column(p)
+         l = patch%landunit(p)
 
-               if (patch%active(p)) then
-                  if (.not. lun%urbpoi(l)) then
-                     eflx_gnet(p) = sabg(p) + dlrad(p) &
-                          + (1._r8-frac_veg_nosno(p))*emg(c)*forc_lwrad(c) - lwrad_emit(c) &
-                          - (eflx_sh_grnd(p)+qflx_evap_soi(p)*htvp(c))
-                     ! save sabg for balancecheck, in case frac_sno is set to zero later
-                     sabg_chk(p) = frac_sno_eff(c) * sabg_snow(p) + (1._r8 - frac_sno_eff(c) ) * sabg_soil(p)
+         if (.not. lun%urbpoi(l)) then
+            eflx_gnet(p) = sabg(p) + dlrad(p) &
+                 + (1._r8-frac_veg_nosno(p))*emg(c)*forc_lwrad(c) - lwrad_emit(c) &
+                 - (eflx_sh_grnd(p)+qflx_evap_soi(p)*htvp(c))
+            ! save sabg for balancecheck, in case frac_sno is set to zero later
+            sabg_chk(p) = frac_sno_eff(c) * sabg_snow(p) + (1._r8 - frac_sno_eff(c) ) * sabg_soil(p)
 
-                     eflx_gnet_snow = sabg_snow(p) + dlrad(p) &
-                          + (1._r8-frac_veg_nosno(p))*emg(c)*forc_lwrad(c) - lwrad_emit_snow(c) &
-                          - (eflx_sh_snow(p)+qflx_ev_snow(p)*htvp(c))
+            eflx_gnet_snow = sabg_snow(p) + dlrad(p) &
+                 + (1._r8-frac_veg_nosno(p))*emg(c)*forc_lwrad(c) - lwrad_emit_snow(c) &
+                 - (eflx_sh_snow(p)+qflx_ev_snow(p)*htvp(c))
 
-                     eflx_gnet_soil = sabg_soil(p) + dlrad(p) &
-                          + (1._r8-frac_veg_nosno(p))*emg(c)*forc_lwrad(c) - lwrad_emit_soil(c) &
-                          - (eflx_sh_soil(p)+qflx_ev_soil(p)*htvp(c))
+            eflx_gnet_soil = sabg_soil(p) + dlrad(p) &
+                 + (1._r8-frac_veg_nosno(p))*emg(c)*forc_lwrad(c) - lwrad_emit_soil(c) &
+                 - (eflx_sh_soil(p)+qflx_ev_soil(p)*htvp(c))
 
-                     eflx_gnet_h2osfc = sabg_soil(p) + dlrad(p) &
-                          + (1._r8-frac_veg_nosno(p))*emg(c)*forc_lwrad(c) - lwrad_emit_h2osfc(c) &
-                          - (eflx_sh_h2osfc(p)+qflx_ev_h2osfc(p)*htvp(c))
-                  else
-                     ! For urban columns we use the net longwave radiation (eflx_lwrad_net) because of
-                     ! interactions between urban columns.
+            eflx_gnet_h2osfc = sabg_soil(p) + dlrad(p) &
+                 + (1._r8-frac_veg_nosno(p))*emg(c)*forc_lwrad(c) - lwrad_emit_h2osfc(c) &
+                 - (eflx_sh_h2osfc(p)+qflx_ev_h2osfc(p)*htvp(c))
+         else
+            ! For urban columns we use the net longwave radiation (eflx_lwrad_net) because of
+            ! interactions between urban columns.
 
-                     ! All wasteheat and traffic flux goes into canyon floor
-                     if (col%itype(c) == icol_road_perv .or. col%itype(c) == icol_road_imperv) then
-                        ! Note that we divide the following landunit variables by 1-wtlunit_roof which 
-                        ! essentially converts the flux from W/m2 of urban area to W/m2 of canyon floor area
-                        eflx_wasteheat_patch(p) = eflx_wasteheat(l)/(1._r8-lun%wtlunit_roof(l))
-                        if ( IsSimpleBuildTemp() ) then
-                           eflx_ventilation_patch(p) = 0._r8
-                        else if ( IsProgBuildTemp() ) then
-                           eflx_ventilation_patch(p) = eflx_ventilation(l)/(1._r8-lun%wtlunit_roof(l))
-                        end if
-                        eflx_heat_from_ac_patch(p) = eflx_heat_from_ac(l)/(1._r8-lun%wtlunit_roof(l))
-                        eflx_traffic_patch(p) = eflx_traffic(l)/(1._r8-lun%wtlunit_roof(l))
-                     else
-                        eflx_wasteheat_patch(p) = 0._r8
-                        eflx_ventilation_patch(p) = 0._r8
-                        eflx_heat_from_ac_patch(p) = 0._r8
-                        eflx_traffic_patch(p) = 0._r8
-                     end if
-                     ! Include transpiration term because needed for previous road
-                     ! and include wasteheat and traffic flux
-                     eflx_gnet(p) = sabg(p) + dlrad(p)  &
-                          - eflx_lwrad_net(p) &
-                          - (eflx_sh_grnd(p) + qflx_evap_soi(p)*htvp(c) + qflx_tran_veg(p)*hvap) &
-                          + eflx_wasteheat_patch(p) + eflx_heat_from_ac_patch(p) + eflx_traffic_patch(p) &
-                          + eflx_ventilation_patch(p)
-		     if ( IsSimpleBuildTemp() ) then
-                        eflx_anthro(p)   = eflx_wasteheat_patch(p) + eflx_traffic_patch(p)
-                     end if
-                     eflx_gnet_snow   = eflx_gnet(p)
-                     eflx_gnet_soil   = eflx_gnet(p)
-                     eflx_gnet_h2osfc = eflx_gnet(p)
-                  end if
-                  dgnetdT(p) = - cgrnd(p) - dlwrad_emit(c)
-                  hs(c) = hs(c) + eflx_gnet(p) * patch%wtcol(p)
-                  dhsdT(c) = dhsdT(c) + dgnetdT(p) * patch%wtcol(p)
-                  ! separate surface fluxes for soil/snow
-                  hs_soil(c) = hs_soil(c) + eflx_gnet_soil * patch%wtcol(p)
-                  hs_h2osfc(c) = hs_h2osfc(c) + eflx_gnet_h2osfc * patch%wtcol(p)
-
+            ! All wasteheat and traffic flux goes into canyon floor
+            if (col%itype(c) == icol_road_perv .or. col%itype(c) == icol_road_imperv) then
+               ! Note that we divide the following landunit variables by 1-wtlunit_roof which 
+               ! essentially converts the flux from W/m2 of urban area to W/m2 of canyon floor area
+               eflx_wasteheat_patch(p) = eflx_wasteheat(l)/(1._r8-lun%wtlunit_roof(l))
+               if ( IsSimpleBuildTemp() ) then
+                  eflx_ventilation_patch(p) = 0._r8
+               else if ( IsProgBuildTemp() ) then
+                  eflx_ventilation_patch(p) = eflx_ventilation(l)/(1._r8-lun%wtlunit_roof(l))
                end if
+               eflx_heat_from_ac_patch(p) = eflx_heat_from_ac(l)/(1._r8-lun%wtlunit_roof(l))
+               eflx_traffic_patch(p) = eflx_traffic(l)/(1._r8-lun%wtlunit_roof(l))
+            else
+               eflx_wasteheat_patch(p) = 0._r8
+               eflx_ventilation_patch(p) = 0._r8
+               eflx_heat_from_ac_patch(p) = 0._r8
+               eflx_traffic_patch(p) = 0._r8
             end if
-         end do
+            ! Include transpiration term because needed for previous road
+            ! and include wasteheat and traffic flux
+            eflx_gnet(p) = sabg(p) + dlrad(p)  &
+                 - eflx_lwrad_net(p) &
+                 - (eflx_sh_grnd(p) + qflx_evap_soi(p)*htvp(c) + qflx_tran_veg(p)*hvap) &
+                 + eflx_wasteheat_patch(p) + eflx_heat_from_ac_patch(p) + eflx_traffic_patch(p) &
+                 + eflx_ventilation_patch(p)
+            if ( IsSimpleBuildTemp() ) then
+               eflx_anthro(p)   = eflx_wasteheat_patch(p) + eflx_traffic_patch(p)
+            end if
+            eflx_gnet_snow   = eflx_gnet(p)
+            eflx_gnet_soil   = eflx_gnet(p)
+            eflx_gnet_h2osfc = eflx_gnet(p)
+         end if
+         dgnetdT(p) = - cgrnd(p) - dlwrad_emit(c)
+         hs(c) = hs(c) + eflx_gnet(p) * patch%wtcol(p)
+         dhsdT(c) = dhsdT(c) + dgnetdT(p) * patch%wtcol(p)
+         ! separate surface fluxes for soil/snow
+         hs_soil(c) = hs_soil(c) + eflx_gnet_soil * patch%wtcol(p)
+         hs_h2osfc(c) = hs_h2osfc(c) + eflx_gnet_h2osfc * patch%wtcol(p)
       end do
 
       ! Additional calculations with SNICAR:
@@ -1727,44 +1728,38 @@ contains
       hs_top(begc:endc)                    = 0._r8
       hs_top_snow(begc:endc)               = 0._r8
 
-      do pi = 1,max_patch_per_col
-         do fc = 1,num_nolakec
-            c = filter_nolakec(fc)
-            lyr_top = snl(c) + 1
-            if ( pi <= col%npatches(c) ) then
-               p = col%patchi(c) + pi - 1
-               if (patch%active(p)) then
-                  g = patch%gridcell(p)
-                  l = patch%landunit(p)
-                  if (.not. lun%urbpoi(l)) then
+      do fp = 1,num_nolakep
+         p = filter_nolakep(fp)
+         c = patch%column(p)
+         l = patch%landunit(p)
 
-                     eflx_gnet_top = sabg_lyr(p,lyr_top) + dlrad(p) + (1._r8-frac_veg_nosno(p))*emg(c)*forc_lwrad(c) &
-                          - lwrad_emit(c) - (eflx_sh_grnd(p)+qflx_evap_soi(p)*htvp(c))
+         lyr_top = snl(c) + 1
 
-                     hs_top(c) = hs_top(c) + eflx_gnet_top*patch%wtcol(p)
+         if (.not. lun%urbpoi(l)) then
 
-                     eflx_gnet_snow = sabg_lyr(p,lyr_top) + dlrad(p) + (1._r8-frac_veg_nosno(p))*emg(c)*forc_lwrad(c) &
-                          - lwrad_emit_snow(c) - (eflx_sh_snow(p)+qflx_ev_snow(p)*htvp(c))
+            eflx_gnet_top = sabg_lyr(p,lyr_top) + dlrad(p) + (1._r8-frac_veg_nosno(p))*emg(c)*forc_lwrad(c) &
+                 - lwrad_emit(c) - (eflx_sh_grnd(p)+qflx_evap_soi(p)*htvp(c))
 
-                     eflx_gnet_soil = sabg_lyr(p,lyr_top) + dlrad(p) + (1._r8-frac_veg_nosno(p))*emg(c)*forc_lwrad(c) &
-                          - lwrad_emit_soil(c) - (eflx_sh_soil(p)+qflx_ev_soil(p)*htvp(c))
+            hs_top(c) = hs_top(c) + eflx_gnet_top*patch%wtcol(p)
 
-                     hs_top_snow(c) = hs_top_snow(c) + eflx_gnet_snow*patch%wtcol(p)
+            eflx_gnet_snow = sabg_lyr(p,lyr_top) + dlrad(p) + (1._r8-frac_veg_nosno(p))*emg(c)*forc_lwrad(c) &
+                 - lwrad_emit_snow(c) - (eflx_sh_snow(p)+qflx_ev_snow(p)*htvp(c))
 
-                     do j = lyr_top,1,1
-                        sabg_lyr_col(c,j) = sabg_lyr_col(c,j) + sabg_lyr(p,j) * patch%wtcol(p)
-                     enddo
-                  else
+            eflx_gnet_soil = sabg_lyr(p,lyr_top) + dlrad(p) + (1._r8-frac_veg_nosno(p))*emg(c)*forc_lwrad(c) &
+                 - lwrad_emit_soil(c) - (eflx_sh_soil(p)+qflx_ev_soil(p)*htvp(c))
 
-                     hs_top(c)      = hs_top(c) + eflx_gnet(p)*patch%wtcol(p)
-                     hs_top_snow(c) = hs_top_snow(c) + eflx_gnet(p)*patch%wtcol(p)
-                     sabg_lyr_col(c,lyr_top) = sabg_lyr_col(c,lyr_top) + sabg(p) * patch%wtcol(p)
+            hs_top_snow(c) = hs_top_snow(c) + eflx_gnet_snow*patch%wtcol(p)
 
-                  endif
-               endif
+            do j = lyr_top,1,1
+               sabg_lyr_col(c,j) = sabg_lyr_col(c,j) + sabg_lyr(p,j) * patch%wtcol(p)
+            enddo
+         else
 
-            endif
-         enddo
+            hs_top(c)      = hs_top(c) + eflx_gnet(p)*patch%wtcol(p)
+            hs_top_snow(c) = hs_top_snow(c) + eflx_gnet(p)*patch%wtcol(p)
+            sabg_lyr_col(c,lyr_top) = sabg_lyr_col(c,lyr_top) + sabg(p) * patch%wtcol(p)
+
+         endif
       enddo
 
     end associate

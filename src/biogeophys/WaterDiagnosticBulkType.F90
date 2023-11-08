@@ -17,7 +17,7 @@ module WaterDiagnosticBulkType
   use decompMod      , only : bounds_type
   use abortutils     , only : endrun
   use clm_varctl     , only : use_cn, iulog, use_luna
-  use clm_varpar     , only : nlevgrnd, nlevsno, nlevcan
+  use clm_varpar     , only : nlevgrnd, nlevsno, nlevcan, nlevsoi
   use clm_varcon     , only : spval
   use LandunitType   , only : lun                
   use ColumnType     , only : col                
@@ -42,7 +42,7 @@ module WaterDiagnosticBulkType
      real(r8), pointer :: snowdp_col             (:)   ! col area-averaged snow height (m)
      real(r8), pointer :: snow_layer_unity_col   (:,:) ! value 1 for each snow layer, used for history diagnostics
      real(r8), pointer :: bw_col                 (:,:) ! col partial density of water in the snow pack (ice + liquid) [kg/m3] 
-
+     real(r8), pointer :: snomelt_accum_col      (:)   ! accumulated col snow melt for z0m calculation (m H2O)
      real(r8), pointer :: h2osoi_liq_tot_col     (:)   ! vertically summed col liquid water (kg/m2) (new) (-nlevsno+1:nlevgrnd)    
      real(r8), pointer :: h2osoi_ice_tot_col     (:)   ! vertically summed col ice lens (kg/m2) (new) (-nlevsno+1:nlevgrnd)    
      real(r8), pointer :: air_vol_col            (:,:) ! col air filled porosity
@@ -171,6 +171,7 @@ contains
     !
     ! !USES:
     use shr_infnan_mod , only : nan => shr_infnan_nan, assignment(=)
+    use clm_varpar     , only : nlevmaxurbgrnd
     !
     ! !ARGUMENTS:
     class(waterdiagnosticbulk_type), intent(inout) :: this
@@ -192,6 +193,7 @@ contains
     allocate(this%snow_depth_col         (begc:endc))                     ; this%snow_depth_col         (:)   = nan
     allocate(this%snow_5day_col          (begc:endc))                     ; this%snow_5day_col          (:)   = nan
     allocate(this%snowdp_col             (begc:endc))                     ; this%snowdp_col             (:)   = nan
+    allocate(this%snomelt_accum_col      (begc:endc))                     ; this%snomelt_accum_col     (:)   = nan
     allocate(this%snow_layer_unity_col   (begc:endc,-nlevsno+1:0))        ; this%snow_layer_unity_col   (:,:) = nan
     allocate(this%bw_col                 (begc:endc,-nlevsno+1:0))        ; this%bw_col                 (:,:) = nan   
     allocate(this%air_vol_col            (begc:endc, 1:nlevgrnd))         ; this%air_vol_col            (:,:) = nan
@@ -292,14 +294,14 @@ contains
          ptr_col=this%h2osoi_ice_tot_col, l2g_scale_type='veg')
     ! excess ice vars
     if (use_excess_ice) then
-      this%exice_vol_tot_col(begc:endc) = 0.0_r8
-      call hist_addfld1d ( &
-           fname=this%info%fname('TOTEXICE_VOL'),  &
-           units='m3/m3',  &
-           avgflag='A', &
-           l2g_scale_type='veg', &
-           long_name=this%info%lname('vertically averaged volumetric excess ice concentration (veg landunits only)'), &
-           ptr_col=this%exice_vol_tot_col)
+       this%exice_vol_tot_col(begc:endc) = 0.0_r8
+       call hist_addfld1d ( &
+            fname=this%info%fname('TOTEXICE_VOL'),  &
+            units='m3/m3',  &
+            avgflag='A', &
+            l2g_scale_type='veg', &
+            long_name=this%info%lname('vertically averaged volumetric excess ice concentration (veg landunits only)'), &
+            ptr_col=this%exice_vol_tot_col)
 
       this%exice_subs_tot_col(begc:endc) = 0.0_r8
       call hist_addfld1d ( &
@@ -493,6 +495,14 @@ contains
          avgflag='A', &
          long_name=this%info%lname('gridcell mean snow height'), &
          ptr_col=this%snowdp_col, c2l_scale_type='urbanf')
+
+    this%snomelt_accum_col(begc:endc) = 0._r8
+    call hist_addfld1d ( &                         ! Have this as an output variable for now to check
+         fname=this%info%fname('SNOMELT_ACCUM'),  &
+         units='m',  &
+         avgflag='A', &
+         long_name=this%info%lname('accumulated snow melt for z0'), &
+         ptr_col=this%snomelt_accum_col, c2l_scale_type='urbanf')
 
     if (use_cn) then
        this%wf_col(begc:endc) = spval
@@ -786,6 +796,7 @@ contains
     use clm_varctl       , only : bound_h2osoi, use_excess_ice, use_excess_ice_tiles
     use ncdio_pio        , only : file_desc_t, ncd_io, ncd_double
     use restUtilMod
+    use ExcessIceStreamType, only : UseExcessIceStreams
     !
     ! !ARGUMENTS:
     class(waterdiagnosticbulk_type), intent(inout) :: this
@@ -797,6 +808,7 @@ contains
     !
     ! !LOCAL VARIABLES:
     logical  :: readvar
+    logical  :: excess_ice_on_restart
     !------------------------------------------------------------------------
 
 
@@ -827,6 +839,18 @@ contains
          long_name=this%info%lname('snow depth'), &
          units='m', &
          interpinic_flag='interp', readvar=readvar, data=this%snow_depth_col) 
+
+    call restartvar(ncid=ncid, flag=flag, &
+         varname=this%info%fname('SNOMELT_ACCUM'), &
+         xtype=ncd_double,  &
+         dim1name='column', &
+         long_name=this%info%lname('accumulated snow melt for z0'), &
+         units='m', &
+         interpinic_flag='interp', readvar=readvar, data=this%snomelt_accum_col)
+    if (flag == 'read' .and. .not. readvar) then
+       ! initial run, not restart: initialize snomelt_accum_col to zero
+       this%snomelt_accum_col(bounds%begc:bounds%endc) = 0._r8
+    endif
 
     call restartvar(ncid=ncid, flag=flag, &
          varname=this%info%fname('frac_sno_eff'), &
@@ -923,22 +947,34 @@ contains
        this%exice_subs_tot_acc(bounds%begc:bounds%endc)=0.0_r8
        this%exice_vol_tot_col(bounds%begc:bounds%endc)=0.0_r8
        this%exice_subs_col(bounds%begc:bounds%endc,1:nlevgrnd)=0.0_r8
-       this%exice_vol_col(bounds%begc:bounds%endc,1:nlevgrnd)=0.0_r8
+       this%exice_vol_col(bounds%begc:bounds%endc,1:nlevsoi)=0.0_r8
     else
        ! initialization of these to zero is ok, since they might not be in the restart file
        this%exice_subs_col(bounds%begc:bounds%endc,1:nlevgrnd)=0.0_r8
-       this%exice_vol_col(bounds%begc:bounds%endc,1:nlevgrnd)=0.0_r8
+       this%exice_vol_col(bounds%begc:bounds%endc,1:nlevsoi)=0.0_r8
+       call RestartExcessIceIssue( &
+            ncid = ncid, &
+            flag = flag, &
+            excess_ice_on_restart = excess_ice_on_restart)
        ! have to at least define them 
        call restartvar(ncid=ncid, flag=flag, varname=this%info%fname('SUBSIDENCE'),  &
             dim1name='column', xtype=ncd_double, &
             long_name=this%info%lname('vertically summed volumetric excess ice concentration (veg landunits only)'), &
             units='m', &
             interpinic_flag='interp', readvar=readvar, data=this%exice_subs_tot_col)
-       if (flag == 'read' .and. (.not. readvar)) then ! when reading restart that does not have excess ice in it
+       if (flag == 'read' .and. ((.not. readvar) .or. (.not. excess_ice_on_restart)) ) then ! when reading restart that does not have excess ice in it
+          if (nsrest == nsrContinue) then
+             call endrun(msg = "On a continue run, excess ice fields MUST be on the restart file "// & 
+             errMsg(sourcefile, __LINE__))
+          else if ( .not. UseExcessIceStreams() )then
+             call endrun(msg = "This input initial conditions file does NOT include excess ice fields" // &
+                         ", and use_excess_ice_streams is off, one or the other needs to be changed  "// & 
+                         errMsg(sourcefile, __LINE__))
+          end if
          this%exice_subs_tot_col(bounds%begc:bounds%endc)=0.0_r8
          this%exice_vol_tot_col(bounds%begc:bounds%endc)=0.0_r8
          this%exice_subs_col(bounds%begc:bounds%endc,1:nlevgrnd)=0.0_r8
-         this%exice_vol_col(bounds%begc:bounds%endc,1:nlevgrnd)=0.0_r8
+         this%exice_vol_col(bounds%begc:bounds%endc,1:nlevsoi)=0.0_r8
        endif
        call restartvar(ncid=ncid, flag=flag, varname=this%info%fname('TOTEXICE_VOL'),  &
             dim1name='column', xtype=ncd_double, &
@@ -1061,7 +1097,6 @@ contains
     ! Compute end-of-timestep summaries of water diagnostic terms
     !
     ! !USES:
-    use clm_varpar     , only : nlevsoi
     use clm_varcon     , only : denice
     use landunit_varcon, only : istsoil, istcrop
     ! !ARGUMENTS:

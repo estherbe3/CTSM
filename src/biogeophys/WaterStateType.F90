@@ -14,7 +14,8 @@ module WaterStateType
   use decompMod      , only : bounds_type
   use decompMod      , only : subgrid_level_patch, subgrid_level_column, subgrid_level_gridcell
   use clm_varctl     , only : use_bedrock, use_excess_ice, iulog
-  use clm_varctl     , only : use_fates_planthydro
+  use spmdMod        , only : masterproc
+  use clm_varctl     , only : use_fates
   use clm_varpar     , only : nlevgrnd, nlevsoi, nlevurb, nlevmaxurbgrnd, nlevsno   
   use clm_varcon     , only : spval
   use LandunitType   , only : lun                
@@ -22,7 +23,7 @@ module WaterStateType
   use WaterInfoBaseType, only : water_info_base_type
   use WaterTracerContainerType, only : water_tracer_container_type
   use WaterTracerUtils, only : AllocateVar1d, AllocateVar2d
-  use ExcessIceStreamType, only : excessicestream_type
+  use ExcessIceStreamType, only : excessicestream_type, UseExcessIceStreams
   !
   implicit none
   save
@@ -286,10 +287,10 @@ contains
     ! Add excess ice fields to history
 
     if (use_excess_ice) then
-      data2dptr => this%excess_ice_col(begc:endc,1:nlevsoi)
-      call hist_addfld2d (fname='EXCESS_ICE',  units='kg/m2', type2d='levsoi', &
+       data2dptr => this%excess_ice_col(begc:endc,1:nlevsoi)
+       call hist_addfld2d (fname='EXCESS_ICE',  units='kg/m2', type2d='levsoi', &
            avgflag='A', long_name='excess soil ice (vegetated landunits only)', &
-           ptr_col=this%excess_ice_col, l2g_scale_type='veg')
+           ptr_col=this%excess_ice_col, l2g_scale_type='veg', default = 'inactive')
     end if
 
     ! (rgk 02-02-2017) There is intentionally no entry  here for stored plant water
@@ -366,7 +367,7 @@ contains
             if (lun%itype(l) == istsoil .or. lun%itype(l) == istcrop) then
                nlevs = nlevgrnd
                do j = 1, nlevs
-                  if (use_bedrock) then
+                  if (use_bedrock .and. col%nbedrock(c) <=nlevsoi) then
                      nbedrock = col%nbedrock(c)
                   else
                      nbedrock = nlevsoi
@@ -374,7 +375,7 @@ contains
                   if (j > nbedrock) then
                      this%h2osoi_vol_col(c,j) = 0.0_r8
                   else
-                     if(use_fates_planthydro) then
+                     if(use_fates) then
                          this%h2osoi_vol_col(c,j) = 0.75_r8*watsat_col(c,j)*ratio
                      else
                          this%h2osoi_vol_col(c,j) = 0.15_r8*ratio
@@ -537,38 +538,44 @@ contains
          this%excess_ice_col(bounds%begc:bounds%endc,-nlevsno+1:nlevmaxurbgrnd)=0.0_r8
          this%exice_bulk_init(bounds%begc:bounds%endc)=0.0_r8
          call this%exicestream%Init(bounds, NLFilename) ! get initial fraction of excess ice per column
-         call this%exicestream%CalcExcessIce(bounds, this%exice_bulk_init)
-         do c = bounds%begc,bounds%endc
-            g = col%gridcell(c)
-            l = col%landunit(c)
-            if (.not. lun%lakpoi(l)) then  !not lake
-               if (lun%itype(l) == istsoil .or. lun%itype(l) == istcrop) then
-                  if (zisoi(nlevsoi) >= 0.5_r8) then
-                    call find_soil_layer_containing_depth(0.5_r8,n05m)
-                  else
-                    n05m=nlevsoi-1
-                  endif
-                  if (use_bedrock .and. nbedrock<=nlevsoi) then
-                     nbedrock = col%nbedrock(c)
-                  else
-                     nbedrock = nlevsoi
-                  endif
-                  do j = 2, nlevmaxurbgrnd ! ignore first layer
-                     if (n05m<nbedrock) then ! bedrock below 1 m
-                        if (j >= n05m .and. j<nbedrock .and. t_soisno_col(c,j) <= tfrz ) then
-                           this%excess_ice_col(c,j) = col%dz(c,j)*denice*(this%exice_bulk_init(c))
-                        else
+         !
+         ! If excess ice is being read from streams, use the streams to
+         ! initialize
+         !
+         if ( UseExcessIceStreams() )then
+            call this%exicestream%CalcExcessIce(bounds, this%exice_bulk_init)
+            do c = bounds%begc,bounds%endc
+               g = col%gridcell(c)
+               l = col%landunit(c)
+               if (.not. lun%lakpoi(l)) then  !not lake
+                  if (lun%itype(l) == istsoil .or. lun%itype(l) == istcrop) then
+                     if (zisoi(nlevsoi) >= 0.5_r8) then
+                       call find_soil_layer_containing_depth(0.5_r8,n05m)
+                     else
+                       n05m=nlevsoi-1
+                     endif
+                     if (use_bedrock .and. col%nbedrock(c) <=nlevsoi) then
+                        nbedrock = col%nbedrock(c)
+                     else
+                        nbedrock = nlevsoi
+                     endif
+                     do j = 2, nlevmaxurbgrnd ! ignore first layer
+                        if (n05m<nbedrock) then ! bedrock below 1 m
+                           if (j >= n05m .and. j<nbedrock .and. t_soisno_col(c,j) <= tfrz ) then
+                              this%excess_ice_col(c,j) = col%dz(c,j)*denice*(this%exice_bulk_init(c))
+                           else
+                              this%excess_ice_col(c,j) = 0.0_r8
+                           endif
+                        else 
                            this%excess_ice_col(c,j) = 0.0_r8
-                        endif
-                     else 
-                        this%excess_ice_col(c,j) = 0.0_r8
-                     end if
-                  end do
+                        end if
+                     end do
+                  endif
+               else ! just in case zeros for lakes and other columns
+                  this%excess_ice_col(c,-nlevsno+1:nlevmaxurbgrnd) = 0.0_r8
                endif
-            else ! just in case zeros for lakes and other columns
-               this%excess_ice_col(c,-nlevsno+1:nlevmaxurbgrnd) = 0.0_r8
-            endif
-         enddo
+            enddo
+         end if
       else ! use_excess_ice is false
          this%excess_ice_col(bounds%begc:bounds%endc,-nlevsno+1:nlevmaxurbgrnd)=0.0_r8
          this%exice_bulk_init(bounds%begc:bounds%endc)=0.0_r8
@@ -589,9 +596,10 @@ contains
     use landunit_varcon  , only : istcrop, istdlak, istsoil  
     use column_varcon    , only : icol_roof, icol_sunwall, icol_shadewall
     use clm_time_manager , only : is_first_step, is_restart
-    use clm_varctl       , only : bound_h2osoi
+    use clm_varctl       , only : bound_h2osoi, nsrest, nsrContinue
     use ncdio_pio        , only : file_desc_t, ncd_double
-    use restUtilMod
+    use ExcessIceStreamType, only : UseExcessIceStreams
+    use restUtilMod        , only : restartvar, RestartExcessIceIssue
     !
     ! !ARGUMENTS:
     class(waterstate_type), intent(in) :: this
@@ -608,6 +616,7 @@ contains
     real(r8) :: maxwatsat    ! maximum porosity    
     real(r8) :: excess       ! excess volumetric soil water
     real(r8) :: totwat       ! total soil water (mm)
+    logical :: excess_ice_on_restart ! Excess ice fields are on the restart file
     !------------------------------------------------------------------------
 
     SHR_ASSERT_ALL_FL((ubound(watsat_col) == (/bounds%endc,nlevmaxurbgrnd/)) , sourcefile, __LINE__)
@@ -705,22 +714,37 @@ contains
        ! no need to even define the restart vars
        this%excess_ice_col(bounds%begc:bounds%endc,-nlevsno+1:nlevmaxurbgrnd)=0.0_r8
     else
+       call RestartExcessIceIssue( &
+            ncid = ncid, &
+            flag = flag, &
+            excess_ice_on_restart = excess_ice_on_restart)
        ! have to at least define them 
        call restartvar(ncid=ncid, flag=flag, varname=this%info%fname('EXCESS_ICE'), xtype=ncd_double,  &
             dim1name='column', dim2name='levtot', switchdim=.true., &
             long_name=this%info%lname('excess soil ice (vegetated landunits only)'), &
             units='kg/m2', scale_by_thickness=.true., &
             interpinic_flag='interp', readvar=readvar, data=this%excess_ice_col)
-       if (flag == 'read' .and. (.not. readvar)) then ! when reading restart that does not have excess ice in it
+       if (flag == 'read' .and. ((.not. readvar) .or. (.not.  excess_ice_on_restart)) ) then ! when reading restart that does not have excess ice in it
+          if (nsrest == nsrContinue) then
+             call endrun(msg = "On a continue run, excess ice fields MUST be on the restart file "// & 
+             errMsg(sourcefile, __LINE__))
+          else if ( .not. UseExcessIceStreams() )then
+             call endrun(msg = "This input initial conditions file does NOT include excess ice fields" // &
+                         ", and use_excess_ice_streams is off, one or the other needs to be changed  "// & 
+                         errMsg(sourcefile, __LINE__))
+          end if
+          if (masterproc) then
+             write(iulog,*) 'Excess ice data is read from the stream and not from restart file!'
+          endif
           do c = bounds%begc,bounds%endc
           l = col%landunit(c)
           if (.not. lun%lakpoi(l)) then  !not lake
              if (lun%itype(l) == istsoil .or. lun%itype(l) == istcrop) then
-                if (use_bedrock .and. nbedrock<=nlevsoi) then
+                if (use_bedrock .and. col%nbedrock(c)>nlevsoi) then
                    nbedrock = col%nbedrock(c)
                 else
                    nbedrock = nlevsoi
-                endif
+                end if
                 do j = 2, nlevmaxurbgrnd ! ignore first layer
                    if(altmax_lastyear_indx(c) < nbedrock) then
                       if (j>altmax_lastyear_indx(c) .and. j<nbedrock &
@@ -728,15 +752,15 @@ contains
                          this%excess_ice_col(c,j) = col%dz(c,j)*denice*(this%exice_bulk_init(c)) ! exice_bulk_init should be already read from the stream during InitCold
                       else
                          this%excess_ice_col(c,j) = 0.0_r8
-                      endif
+                      end if
                    else
                       this%excess_ice_col(c,j) = 0.0_r8
                    end if
                 end do
              else
                 this%excess_ice_col(c,-nlevsno+1:nlevmaxurbgrnd) = 0.0_r8
-             endif
-          endif
+             end if
+          end if
           end do ! end of column loop
        endif! end of old file restart
     endif ! end of exice restart
