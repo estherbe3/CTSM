@@ -2195,6 +2195,8 @@ sub setup_logic_soilstate {
               $definition, $defaults, $nl, 'use_excess_ice'); # excess ice flags should be read before exice logic is setup
   add_default($opts, $nl_flags->{'inputdata_rootdir'},
               $definition, $defaults, $nl, 'use_excess_ice_tiles');
+  add_default($opts, $nl_flags->{'inputdata_rootdir'},
+              $definition, $defaults, $nl, 'excess_ice_split_factor');
 
   my $var1 = "soil_layerstruct_predefined";
   my $var2 = "soil_layerstruct_userdefined";

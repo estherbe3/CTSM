@@ -249,6 +249,8 @@ contains
 
     namelist /clm_inparm/ use_excess_ice_tiles
 
+    namelist /clm_inparm/ excess_ice_split_factor
+
     namelist /clm_inparm/ use_lai_streams
 
     namelist /clm_inparm/ use_bedrock
@@ -779,7 +781,9 @@ contains
 
     call mpi_bcast (use_excess_ice, 1, MPI_LOGICAL, 0, mpicom,ier)
 
-    call mpi_bcast (use_excess_ice_tiles, 1, MPI_LOGICAL, 0, mpicom,ier)
+    call mpi_bcast (use_excess_ice_tiles, 1, MPI_REAL8, 0, mpicom,ier)
+
+        call mpi_bcast (excess_ice_split_factor, 1, MPI_LOGICAL, 0, mpicom,ier)
 
     call mpi_bcast (use_lai_streams, 1, MPI_LOGICAL, 0, mpicom, ier)
 
@@ -922,6 +926,7 @@ contains
     write(iulog,*) '    use_vichydro = ', use_vichydro
     write(iulog,*) '    use_excess_ice = ', use_excess_ice
     write(iulog,*) '    use_excess_ice_tiles = ', use_excess_ice_tiles
+    write(iulog,*) '    excess_ice_split_factor = ', excess_ice_split_factor
     write(iulog,*) '    use_cn = ', use_cn
     write(iulog,*) '    use_cndv = ', use_cndv
     write(iulog,*) '    use_crop = ', use_crop
