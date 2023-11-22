@@ -3022,25 +3022,27 @@ end subroutine SetMatrix_Snow
       eflx_lateral_col => energyflux_inst%eflx_lateral_col &  ! Output: [real(r8) (:) ]  lateral heat flux into column [W/m2]
    )
 
-   dx = 2.0_r8   ! Will be read from file
-   dl = 10.0_r8  ! Will be read from file
+   !dx = 2.0_r8   ! Will be read from file
+   !dl = 10.0_r8  ! Will be read from file
    initdztile2(bounds%begg:bounds%endg) = 0.5_r8 ! Will be read from file
-   A1 = 10.0_r8  ! Will be read from file
-   A2 = 10.0_r8  ! Will be read from file
-
    dztile2 = 0.0_r8 !
-   !write(iulog,*) col%a_tile
+   write(iulog,*) 'columtiles', col%a_tile
 
    do g = bounds%begg,bounds%endg
       l = grc%landunit_indices(istsoil,g)            
       if (lun%ncolumns(l) == 2) then
          c1=lun%coli(l)
          c2=lun%colf(l)
-         !A1=col%a_tile(c1)
-         !A2=col%a_tile(c2)
+         A1=col%a_tile(c1)     !read geometry of files
+         A2=col%a_tile(c2)
+         dx =col%tile_dist(c1)+ col%tile_dist(c2)
+         dl= col%tile_ctl(c1)
+         !dx=col%tile_ctl(c1)
+         !dl=col%tile_dist(c1)
 
-        ! write(iulog,*) 'AreaTile1',A1
-        ! write(iulog,*) 'AreaTile2', A2
+         write(iulog,*) 'AreaTile1',A1
+         write(iulog,*) 'AreaTile2', A2
+         write(iulog,*) "Tile_distance = ", dx, "tile_contact= ",dl
 
          !Update elevation of tile2 relative to tile1
          dztile2 = initdztile2(g) + exice_subs_tot_acc(c2) - exice_subs_tot_acc(c1)                

@@ -793,7 +793,7 @@ contains
     use spmdMod          , only : masterproc
     use clm_varcon       , only : pondmx, watmin, spval, nameg
     use column_varcon    , only : icol_roof, icol_sunwall, icol_shadewall
-    use clm_varctl       , only : bound_h2osoi, use_excess_ice, use_excess_ice_tiles
+    use clm_varctl       , only : bound_h2osoi, use_excess_ice, use_excess_ice_tiles, nsrest, nsrContinue
     use ncdio_pio        , only : file_desc_t, ncd_io, ncd_double
     use restUtilMod
     use ExcessIceStreamType, only : UseExcessIceStreams

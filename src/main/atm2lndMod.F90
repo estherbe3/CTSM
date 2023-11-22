@@ -139,6 +139,7 @@ contains
     type(filter_col_type) :: downscale_filter_c
     real(r8) :: initdztile2(bounds%begg:bounds%endg) ! Initial elevation difference between top of tile 2 compared to tile 1 
     real(r8) :: dztile2                   ! Elevation difference between top of tile 2 compared to tile 1 
+    real(r8) :: A1, A2                    ! Areas of representative permafrost tiles [m]
 
     ! temporaries for topo downscaling
     real(r8) :: hsurf_g,hsurf_c
@@ -283,9 +284,15 @@ contains
             if (lun%ncolumns(l) == 2) then
                c1=lun%coli(l)
                c2=lun%colf(l)
-               dztile2 = (initdztile2(g) + exice_subs_tot_acc(c2) + snow_depth(c2)) - &
-                         (exice_subs_tot_acc(c1) + snow_depth(c1))! get the difference between the top of the snow on tiles
-               if (dztile2 >  SnowDepthTreshold) then
+               A1=col%a_tile(c1)     !read geometry of files
+               A2=col%a_tile(c2)
+               !dztile2 = (initdztile2(g) + exice_subs_tot_acc(c2) + snow_depth(c2)) - &
+                      !   (exice_subs_tot_acc(c1) + snow_depth(c1))! get the difference between the top of the snow on tiles
+               dztile2 = (initdztile2(g) + exice_subs_tot_acc(c2) - snow_depth(c2)) - &
+                         (-exice_subs_tot_acc(c1) - snow_depth(c1))!      correct signs for snow redistribution 
+               !write(iulog,*) 'dztile=',dztile2,'snow_dP2', snow_depth(c2), 'exiceSub2= ', exice_subs_tot_acc(c2)        
+               !write(iulog,*) 'snow_dP1', snow_depth(c1), 'exiceSub1= ', exice_subs_tot_acc(c1)  
+                  if (dztile2 >  SnowDepthTreshold) then
                   !Scale snow forcing. For now assumes equal sizes of the two tiles
                   forc_snow_c(c1) = 0.0_r8
                   forc_snow_c(c2) = forc_snow_c(c2) * 2.0_r8

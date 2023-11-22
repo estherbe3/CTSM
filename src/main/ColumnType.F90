@@ -75,9 +75,9 @@ module ColumnType
 
      !Colum Characteristics for Excess Ice Calculations
 
-     real(r8), pointer :: a_tile                (:,:)  ! Area of the Tile for Excess Ice Tiling 
-     !real(r8), pointer :: DisT_l                (:)  ! Distance to other tile l
-     !real(r8), pointer :: DisT_x                (:)  ! Distance to tile x
+     real(r8), pointer :: a_tile                (:)  ! Area of the Tile for Excess Ice Tiling 
+     real(r8), pointer :: tile_ctl                (:)  ! Distance to other tile l
+     real(r8), pointer :: tile_dist               (:)  ! Distance to tile x
 
 
      ! levgrnd_class gives the class in which each layer falls. This is relevant for
@@ -148,7 +148,9 @@ contains
     allocate(this%urbpoi      (begc:endc))                     ; this%urbpoi      (:)   = .false.
 
     !if (use_excess_ice_tiles) then
-    allocate(this%a_tile    (begc:endc,2))                     ;this%a_tile       (:,:)   = nan !read in geometrical variables for tiling
+    allocate(this%a_tile    (begc:endc))                      ;this%a_tile        (:) = nan !read in geometrical variables for tiling
+    allocate(this%tile_dist (begc:endc))                       ;this%tile_dist     (:)   = nan
+    allocate(this%tile_ctl  (begc:endc))                       ;this%tile_ctl      (:)   = nan 
     !endif
 
   end subroutine Init
@@ -189,6 +191,8 @@ contains
     deallocate(this%urbpoi)
     !if (use_excess_ice_tiles) then
     deallocate(this%a_tile)
+    deallocate(this%tile_dist)
+    deallocate(this%tile_ctl)
     !endif
 
   end subroutine Clean

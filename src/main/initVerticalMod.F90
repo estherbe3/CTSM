@@ -100,7 +100,9 @@ contains
     real(r8) ,pointer     :: tslope (:)        ! read in - topo_slope 
     real(r8)              :: slope0            ! temporary
     integer               :: ier               ! error status
-    real(r8) , pointer    :: Areatiles_in (:,:) ! Area of the Tiles for TIling approach ESB
+    real(r8) , pointer    :: Areatiles_in (:) ! Area of the Tiles for Tiling approach ESB
+    real(r8) , pointer    :: Tiles_dist (:)     !Distance between the Tiles ESB
+    real(r8) , pointer    :: Tiles_ctl (:)      !Contact length between the Tiles ESB
     integer               :: nb_tiles           !read in number of tiles
     real(r8)              :: scalez = 0.025_r8 ! Soil layer thickness discretization (m)
     real(r8)              :: thick_equal = 0.2
@@ -706,22 +708,41 @@ contains
     ! Read in Area and distance parameter for tiling: ESB
     !-----------------------------------------------
 
-    !if (use_excess_ice_tiles) then
-     ! allocate(Areatiles_in(bounds%begg:bounds%endg,1:nb_tiles))
-     ! allocate(Areatiles_in(1:nb_tiles,bounds%begg:bounds%endg))
-    allocate(Areatiles_in(bounds%begg:bounds%endg,2))
+    allocate(Areatiles_in(bounds%begg:bounds%endg))
     call ncd_io(ncid=ncid, varname='AREA_TILES', flag='read', data=Areatiles_in, dim1name=grlnd, readvar=readvar)
     if (.not. readvar) then 
        call shr_sys_abort(' ERROR: AREA_TILES NOT on surfdata file'//&
           errMsg(sourcefile, __LINE__)) 
     endif 
-    write(iulog,*) 'Areatiles_in:', Areatiles_in
     do c = begc, endc
        g = col%gridcell(c)
-       col%a_tile(c,:) = Areatiles_in(g,:)
-       write(iulog,*) 'column_atile', col%a_tile
+       col%a_tile(c) = Areatiles_in(g)
     end do
     deallocate(Areatiles_in)
+
+    allocate(Tiles_dist(bounds%begg:bounds%endg))
+    call ncd_io(ncid=ncid, varname='TILE_dist', flag='read', data=Tiles_dist, dim1name=grlnd, readvar=readvar)
+    if (.not. readvar) then
+      call endrun(msg=' ERROR: Tile_distance non surfdata file'//errMsg(sourcefile, __LINE__)) 
+   end if
+   do c = bounds%begc, bounds%endc
+      g = col%gridcell(c)
+      col%tile_dist(c) = Tiles_dist(g)
+   end do
+   deallocate(Tiles_dist)
+
+   allocate(Tiles_ctl(bounds%begg:bounds%endg))
+   call ncd_io(ncid=ncid, varname='TILE_ctl', flag='read', data=Tiles_ctl, dim1name=grlnd, readvar=readvar)
+   if (.not. readvar) then
+     call endrun(msg=' ERROR: Tile_ctl (contact length) non surfdata file'//errMsg(sourcefile, __LINE__)) 
+   end if
+   do c = bounds%begc, bounds%endc
+     g = col%gridcell(c)
+     col%tile_ctl(c) = Tiles_ctl(g)
+   end do
+   deallocate(Tiles_ctl)
+
+
   ! SCA shape function defined
 
     !-----------------------------------------------
