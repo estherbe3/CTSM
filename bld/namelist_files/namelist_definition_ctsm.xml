@@ -2880,7 +2880,7 @@ If TRUE turn on the excess ice tiling physics, (Lee et al., 2014; Cai et al., 20
 </entry>
 
 <entry id="excess_ice_split_factor" type="real" category="clm_physics"
-       group="clm_snowhydrology_inparm"   >
+       group="clm_inparm"   >
 Fraction if excess ice which first tile will get.
 </entry>
 

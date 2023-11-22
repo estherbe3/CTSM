@@ -17,7 +17,7 @@ module WaterDiagnosticBulkType
   use decompMod      , only : bounds_type
   use abortutils     , only : endrun
   use clm_varctl     , only : use_cn, iulog, use_luna
-  use clm_varpar     , only : nlevgrnd, nlevsno, nlevcan, nlevsoi
+  use clm_varpar     , only : nlevgrnd, nlevsno, nlevcan, nlevsoi, nlevmaxurbgrnd
   use clm_varcon     , only : spval
   use LandunitType   , only : lun                
   use ColumnType     , only : col                
@@ -54,7 +54,7 @@ module WaterDiagnosticBulkType
      real(r8), pointer :: exice_vol_col          (:,:) ! col per layer volumetric excess ice content (m3/m3)
      real(r8), pointer :: exice_vol_tot_col      (:)  ! col averaged volumetric excess ice content (m3/m3)
      real(r8), pointer :: z_adj_col              (:,:) ! adjusted depth (0 is top tile at init)
-     real(r8), pointer ;; dz_adj_col             (:,:) ! adjusted layer thickness
+     real(r8), pointer :: dz_adj_col             (:,:) ! adjusted layer thickness
 
      real(r8), pointer :: snw_rds_col            (:,:) ! col snow grain radius (col,lyr)    [m^-6, microns]
      real(r8), pointer :: snw_rds_top_col        (:)   ! col snow grain radius (top layer)  [m^-6, microns]
@@ -208,8 +208,8 @@ contains
     allocate(this%exice_subs_col         (begc:endc, 1:nlevgrnd))         ; this%exice_subs_col         (:,:) = 0.0_r8
     allocate(this%exice_vol_col          (begc:endc, 1:nlevgrnd))         ; this%exice_vol_col          (:,:) = 0.0_r8
     allocate(this%exice_vol_tot_col      (begc:endc))                     ; this%exice_vol_tot_col      (:)   = 0.0_r8
-    allocate(this%z_adj_col             (begc:endc,-nlevsno+1:nlevmaxurbgrnd)); this$z_adj_col         (:,:) = 0.0_r8
-    allocate(this%dz_adj_col            (begc:endc,-nlevsno+1:nlevmaxurbgrnd)); this$dz_adj_col        (:,:) = 0.0_r8
+    allocate(this%z_adj_col             (begc:endc,-nlevsno+1:nlevmaxurbgrnd)); this%z_adj_col         (:,:) = 0.0_r8
+    allocate(this%dz_adj_col            (begc:endc,-nlevsno+1:nlevmaxurbgrnd)); this%dz_adj_col        (:,:) = 0.0_r8
 
     allocate(this%snw_rds_col            (begc:endc,-nlevsno+1:0))        ; this%snw_rds_col            (:,:) = nan
     allocate(this%snw_rds_top_col        (begc:endc))                     ; this%snw_rds_top_col        (:)   = nan
@@ -327,11 +327,11 @@ contains
         data2dptr => this%z_adj_col(begc:endc,1:nlevsoi)
         call hist_addfld2d (fname='ZADJ',  units='m', type2d='levsoi', &
             avgflag='A', long_name='adjusted depth (0 is higher tile at coldstart) for Excess Ice tiles (veg. landunits only))', &
-            ptr_col=this%excess_ice_col, l2g_scale_type='veg', default = 'inactive')
+            ptr_col=data2dptr, l2g_scale_type='veg', default = 'inactive')
         data2dptr => this%dz_adj_col(begc:endc,1:nlevsoi)
         call hist_addfld2d (fname='DZADJ',  units='m', type2d='levsoi', &
             avgflag='A', long_name='layer thickness for excess Ice tiles(vegetated landunits only)', &
-            ptr_col=this%excess_ice_col, l2g_scale_type='veg', default = 'inactive')
+            ptr_col=data2dptr, l2g_scale_type='veg', default = 'inactive')
       end if
 
     end if
@@ -1011,8 +1011,8 @@ contains
               interpinic_flag='interp', readvar=readvar, data=this%z_adj_col)
           if (flag == 'read' .and. (.not. readvar)) then
             this%exice_subs_tot_acc(bounds%begc:bounds%endc)=0.0_r8
-            this%z_adj_col(begc:endc,-nlevsno+1:nlevmaxurbgrnd)=0.0_r8
-            this%dz_adj_col(begc:endc,-nlevsno+1:nlevmaxurbgrnd)=0.0_r8
+            this%z_adj_col(bounds%begc:bounds%endc,-nlevsno+1:nlevmaxurbgrnd)=0.0_r8
+            this%dz_adj_col(bounds%begc:bounds%endc,-nlevsno+1:nlevmaxurbgrnd)=0.0_r8
           endif
         endif
     endif
@@ -1161,7 +1161,7 @@ contains
          exice_subs_tot_acc => this%exice_subs_tot_acc       , & ! Output  [real(r8) (:)   ]  accumulated vertically summed subsidence due to excess ice melt (m)
          exice_vol_tot_col  => this%exice_vol_tot_col        , & ! Output  [real(r8) (:)   ]  vertically averaged volumetric excess ice content (m3/m3)
         z_adj               => this%z_adj_col                , & ! Outhput [real(r8) (:,:) ]
-        dz_adj              => this%dz_adj_col                , & ! Outhput [real(r8) (:,:) ]
+        dz_adj              => this%dz_adj_col                 & ! Outhput [real(r8) (:,:) ]
     )
 
     call this%waterdiagnostic_type%Summary(bounds, &
