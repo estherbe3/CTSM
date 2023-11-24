@@ -3026,7 +3026,11 @@ end subroutine SetMatrix_Snow
    !dl = 10.0_r8  ! Will be read from file
    initdztile2(bounds%begg:bounds%endg) = 0.5_r8 ! Will be read from file
    dztile2 = 0.0_r8 !
-   write(iulog,*) 'columtiles', col%a_tile
+   !A1=1.0_r8
+   !A2=1.0_r8
+   
+   
+   !write(iulog,*) 'columtiles', col%a_tile
 
    do g = bounds%begg,bounds%endg
       l = grc%landunit_indices(istsoil,g)            
@@ -3040,8 +3044,8 @@ end subroutine SetMatrix_Snow
          !dx=col%tile_ctl(c1)
          !dl=col%tile_dist(c1)
 
-         write(iulog,*) 'AreaTile1',A1
-         write(iulog,*) 'AreaTile2', A2
+         !write(iulog,*) 'AreaTile1',A1
+         !!write(iulog,*) 'AreaTile2', A2
          write(iulog,*) "Tile_distance = ", dx, "tile_contact= ",dl
 
          !Update elevation of tile2 relative to tile1
