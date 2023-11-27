@@ -2191,10 +2191,7 @@ sub setup_logic_soilstate {
   add_default($opts, $nl_flags->{'inputdata_rootdir'}, $definition, $defaults, $nl, 'organic_frac_squared' );
   add_default($opts, $nl_flags->{'inputdata_rootdir'}, $definition, $defaults, $nl, 'use_bedrock',
               'use_fates'=>$nl_flags->{'use_fates'}, 'vichydro'=>$nl_flags->{'vichydro'} );
-  add_default($opts, $nl_flags->{'inputdata_rootdir'},
-              $definition, $defaults, $nl, 'use_excess_ice'); # excess ice flags should be read before exice logic is setup
-  add_default($opts, $nl_flags->{'inputdata_rootdir'},
-              $definition, $defaults, $nl, 'use_excess_ice_tiles');
+  add_default($opts, $nl_flags->{'inputdata_rootdir'}, $definition, $defaults, $nl, 'use_excess_ice'); # excess ice flags should be read before exice logic is setup
 
   my $var1 = "soil_layerstruct_predefined";
   my $var2 = "soil_layerstruct_userdefined";
@@ -4335,6 +4332,8 @@ sub setup_logic_exice {
   my ($opts, $nl_flags, $definition, $defaults, $nl) = @_;
   my $use_exice = $nl->get_value( 'use_excess_ice' );
   my $use_exice_streams = $nl->get_value( 'use_excess_ice_streams' );
+  my $use_excess_ice_tiles = $nl->get_value( 'use_excess_ice_tiles' );
+  my $excess_ice_split_factor = $nl->get_value( 'excess_ice_split_factor' );
   # IF excess ice streams is on
   if (defined($use_exice_streams) && value_is_true($use_exice_streams)) {
      # Can only be true if excess ice is also on, otherwise fail
@@ -4371,8 +4370,8 @@ sub setup_logic_exice {
        }
      }
   }
-  my $use_exice_tiles = $nl->get_value( 'use_excess_ice_tiles'               );
-  if ( ! value_is_true($use_exice) && value_is_true($use_exice_tiles)) {
+  
+  if ( ! value_is_true($use_exice) && value_is_true($use_excess_ice_tiles)) {
       $log->fatal_error("cannot have use_excess_ice_tiles without use_excess_ice == true" );
   }
     
