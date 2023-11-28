@@ -9,8 +9,9 @@ module SoilTemperatureMod
   ! !USES:
   use shr_kind_mod            , only : r8 => shr_kind_r8
   use shr_infnan_mod          , only : nan => shr_infnan_nan, assignment(=)
-  use decompMod               , only : bounds_type
+  use decompMod               , only : bounds_type, subgrid_level_column
   use abortutils              , only : endrun
+  use clm_varcon              , only : spval
   use perf_mod                , only : t_startf, t_stopf
   use clm_varctl              , only : iulog
   use UrbanParamsType         , only : urbanparams_type
@@ -3118,12 +3119,12 @@ end subroutine SetMatrix_Snow
          if (eflx_lateral_col(c1) == spval) then
             write(iulog,*) 'eflx_lateral_col is nan on tile 1'
             write(iulog,*) 'at layer: ', j
-            call endrun(subgrid_index=indexc, subgrid_level=subgrid_level_column, msg=errmsg(sourcefile, __LINE__))
+            call endrun(subgrid_index=c1, subgrid_level=subgrid_level_column, msg=errmsg(sourcefile, __LINE__))
          endif
          if (eflx_lateral_col(c2) == spval) then
             write(iulog,*) 'eflx_lateral_col is nan on tile 2'
             write(iulog,*) 'at layer: ', j
-            call endrun(subgrid_index=indexc, subgrid_level=subgrid_level_column, msg=errmsg(sourcefile, __LINE__))
+            call endrun(subgrid_index=c2, subgrid_level=subgrid_level_column, msg=errmsg(sourcefile, __LINE__))
          endif
          enddo
       endif
