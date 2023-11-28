@@ -326,11 +326,11 @@ contains
              ptr_col=this%exice_subs_tot_acc)
         data2dptr => this%z_adj_col(begc:endc,1:nlevsoi)
         call hist_addfld2d (fname='ZADJ',  units='m', type2d='levsoi', &
-            avgflag='A', long_name='adjusted depth (0 is higher tile at coldstart) for Excess Ice tiles (veg. landunits only))', &
+            avgflag='I', long_name='adjusted depth (0 is higher tile at coldstart) for Excess Ice tiles (veg. landunits only))', &
             ptr_col=data2dptr, l2g_scale_type='veg', default = 'inactive')
         data2dptr => this%dz_adj_col(begc:endc,1:nlevsoi)
         call hist_addfld2d (fname='DZADJ',  units='m', type2d='levsoi', &
-            avgflag='A', long_name='layer thickness for excess Ice tiles(vegetated landunits only)', &
+            avgflag='I', long_name='layer thickness for excess Ice tiles(vegetated landunits only)', &
             ptr_col=data2dptr, l2g_scale_type='veg', default = 'inactive')
       end if
 
@@ -1219,7 +1219,7 @@ contains
              h2osoi_ice_tot(c) = h2osoi_ice_tot(c) + h2osoi_ice(c,j)
              if (lun%itype(l) == istsoil .or. lun%itype(l) == istcrop) then
                 exice_subs_tot_col(c) = exice_subs_tot_col(c) + exice_subs_col(c,j)
-                exice_subs_tot_acc(c) = exice_subs_tot_acc(c) + exice_subs_col(c,j)
+                !exice_subs_tot_acc(c) = exice_subs_tot_acc(c) + exice_subs_col(c,j)
              endif
           end if
        end do
