@@ -2981,6 +2981,8 @@ end subroutine SetMatrix_Snow
    use clm_varctl      , only : iulog
    use GridcellType    , only : grc
    use LandunitType    , only : lun
+   use abortutils      , only : endrun
+   use shr_log_mod     , only : errMsg => shr_log_errMsg
 
    implicit none
    ! ARGUMENTS:
