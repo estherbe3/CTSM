@@ -3028,7 +3028,7 @@ end subroutine SetMatrix_Snow
    dl = 26.7_r8  ! Will be read from file
    initdztile2(bounds%begg:bounds%endg) = 0.5_r8 ! Will be read from file
    dztile2 = 0.0_r8 !
-   A1=70.0_r8g
+   A1=70.0_r8
    A2=58.0_r8
    
    
@@ -3115,6 +3115,16 @@ end subroutine SetMatrix_Snow
          !write(iulog,*) 'soilt',t_soisno(c1,j),t_soisno(c2,j)
          eflx_lateral_col(c1) = eflx_lateral_col(c1) + hhf1(j)
          eflx_lateral_col(c2) = eflx_lateral_col(c2) + hhf2(j)
+         if (eflx_lateral_col(c1) == spval) then
+            write(iulog,*) 'eflx_lateral_col is nan on tile 1'
+            write(iulog,*) 'at layer: ', j
+            call endrun(subgrid_index=indexc, subgrid_level=subgrid_level_column, msg=errmsg(sourcefile, __LINE__))
+         endif
+         if (eflx_lateral_col(c2) == spval) then
+            write(iulog,*) 'eflx_lateral_col is nan on tile 2'
+            write(iulog,*) 'at layer: ', j
+            call endrun(subgrid_index=indexc, subgrid_level=subgrid_level_column, msg=errmsg(sourcefile, __LINE__))
+         endif
          enddo
       endif
 
