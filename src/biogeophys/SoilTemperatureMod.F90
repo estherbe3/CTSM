@@ -3026,7 +3026,7 @@ end subroutine SetMatrix_Snow
    !dl = 10.0_r8  ! Will be read from file
    initdztile2(bounds%begg:bounds%endg) = 0.5_r8 ! Will be read from file
    dztile2 = 0.0_r8 !
-   !A1=1.0_r8
+   !A1=1.0_r8g
    !A2=1.0_r8
    
    
@@ -3061,7 +3061,7 @@ end subroutine SetMatrix_Snow
          hhf1(1:nlevmaxurbgrnd) = 0.0_r8
          hhf2(1:nlevmaxurbgrnd) = 0.0_r8
          !write(iulog,*) 'before',hhf1(18)
-         do j = 2,nlevmaxurbgrnd*2 !could instead use while (j1<=nsoil .and. j2<=nsoil), j here is eaqual to j1+j2
+         do_layers: do while(j1<=nlevmaxurbgrnd .and. j2<=nlevmaxurbgrnd) !could instead use while (j1<=nsoil .and. j2<=nsoil), j here is eaqual to j1+j2
             
             !Update tile top and bottom depth. Using top of tile1 as the reference. 
             tl1ztop = zi(c1,j1) - dz(c1,j1) !zero for first layer
@@ -3087,20 +3087,21 @@ end subroutine SetMatrix_Snow
             !   write(iulog,*) 'middle_18',hhf_interface,'temp_diff',t_soisno(c2,j2) - t_soisno(c1,j1)
             !endif
             !update index
-            if (tl1zbot < tl2zbot) then 
-               j1=j1+1
-               if (j1 > nlevmaxurbgrnd) then
-                  j1 = nlevmaxurbgrnd
-                  j2 = j2 + 1
-               endif
-            else 
+            if (tl1zbot <= tl2zbot) then 
                j2=j2+1
                if (j2 > nlevmaxurbgrnd) then
                   j2 = nlevmaxurbgrnd
-                  j1 = j1 + 1
+                  exit do_layers
+               endif
+            else if(tl2zbot <= tl1zbot) then 
+               j1=j1+1
+               if (j1 > nlevmaxurbgrnd) then
+                  j1 = nlevmaxurbgrnd
+                  exit do_layers
                endif
             endif
-         enddo !layer loop
+
+         enddo do_layers!layer loop
          !endif
 
          eflx_lateral_col(c1) = 0.0_r8
