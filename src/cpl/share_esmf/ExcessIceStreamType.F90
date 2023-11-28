@@ -229,9 +229,9 @@ contains
           l = grc%landunit_indices(istsoil,g)
           if (lun%ncolumns(l) == 2) then
             c=lun%coli(l)
-            exice_bulk_init(c)=this%exice_bulk(g)*use_excess_ice_tiles*2.0_r8 ! Will be read from the file
+            exice_bulk_init(c)=this%exice_bulk(g)*excess_ice_split_factor*2.0_r8 ! Will be read from the file
             c=lun%colf(l)
-            exice_bulk_init(c)=this%exice_bulk(g)*use_excess_ice_tiles*2.0_r8 ! Will be read from the file
+            exice_bulk_init(c)=this%exice_bulk(g)*excess_ice_split_factor*2.0_r8 ! Will be read from the file
             !call endrun(msg=' CONDITION WORKS '//errMsg(sourcefile, __LINE__))
           endif
       enddo
