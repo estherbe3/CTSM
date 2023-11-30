@@ -136,7 +136,7 @@ contains
     use clm_varctl                    , only : use_cn, use_fates
     use clm_varctl                    , only : use_crop, ndep_from_cpl, fates_spitfire_mode
     use clm_varctl                    , only : use_excess_ice_tiles
-    use clm_instur                    , only : exice_tile_mask
+    use clm_instur                    , only : exice_tile_mask, a_tile1, a_tile2, tile_dist, tile_ctl
     use clm_varorb                    , only : eccen, mvelpp, lambm0, obliqr
     use clm_varctl                    , only : use_cropcal_streams
     use landunit_varcon               , only : landunit_varcon_init, max_lunit, numurbl
@@ -241,6 +241,10 @@ contains
     allocate (wt_nat_patch (begg:endg, surfpft_lb:surfpft_ub ))
     if (use_excess_ice_tiles) then
        allocate (exice_tile_mask  (begg:endg            ))
+       allocate (a_tile1   (begg:extends_type_of         ))
+       allocate (a_tile2   (begg:endg                    ))
+       allocate (tile_dist (begg_endg                    ))
+       allocate (tile_ctl  (begg:endg                    ))
     endif
     
     ! Read list of Patches and their corresponding parameter values

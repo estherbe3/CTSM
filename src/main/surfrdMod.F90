@@ -35,7 +35,7 @@ module surfrdMod
   private :: surfrd_veg_all   ! Read all of the vegetated landunits
   private :: surfrd_veg_dgvm  ! Read vegetated landunits for DGVM mode
   private :: surfrd_pftformat ! Read crop pfts in file format where they are part of the vegetated land unit
-  private :: surfrd_cftformat ! Read crop pfts in file format where they are on their own landunit
+  private :: surfrd_cftformat! Read crop pfts in file format where they are on their own landunit
   private :: surfrd_exicetiles! Read excess ice tiling mask
   !
   ! !PRIVATE DATA MEMBERS:
@@ -999,7 +999,7 @@ contains
   !
   !
   use clm_varctl, only : use_excess_ice_tiles
-  use clm_instur, only : exice_tile_mask
+  use clm_instur, only : exice_tile_mask, a_tile1, a_tile2, tile_dist, tile_ctl
 
     !
     ! !ARGUMENTS:
@@ -1025,6 +1025,50 @@ contains
         
       endif
       deallocate(arrayl)
+
+      !Read in Area and distance parameter for tiling: ESB
+      !-----------------------------------------------
+  
+      allocate(arrayl(begg:endg))
+      call ncd_io(ncid=ncid, varname='AREA_TILE1', flag='read', data=arrayl, dim1name=grlnd, readvar=readvar)
+      if (.not. readvar) then 
+         write(iulog,*) (' Warning: AREA_TILE1 NOT on surfdata file')
+         a_tile1(begg:endg)=70.0
+      else 
+         a_tile1(begg:endg)= arrayl(begg:endg)
+      endif 
+      deallocate(arrayl)
+
+      allocate(arrayl(begg:endg))
+      call ncd_io(ncid=ncid, varname='AREA_TILE2', flag='read', data=arrayl, dim1name=grlnd, readvar=readvar)
+      if (.not. readvar) then 
+         write(iulog,*) (' Warning: AREA_TILE2 NOT on surfdata file')
+         a_tile2(begg:endg)=58.0
+      else 
+         a_tile2(begg:endg)=arrayl(begg:endg)
+      endif 
+      deallocate(arrayl)
+  
+      allocate(arrayl(begg:endg))
+      call ncd_io(ncid=ncid, varname='TILE_dist', flag='read', data=arrayl, dim1name=grlnd, readvar=readvar)
+      if (.not. readvar) then
+        write(iulog,*) (' Warning:Tile_distance non surfdata file')
+        Tiles_dist(begg:endg)=2.1
+      else
+         tile_dist(begg:endg) = arrayl(begg:endg)
+      end if
+      deallocate(arrayl)
+  
+      allocate(arrayl(bounds%begg:bounds%endg))
+      call ncd_io(ncid=ncid, varname='TILE_ctl', flag='read', data=arrayl, dim1name=grlnd, readvar=readvar)
+      if (.not. readvar) then
+        write(iulog,*) (' Warning: Tile_ctl (contact length) non surfdata file')
+        Tiles_ctl(bounds%begg:bounds%endg)=0.3
+      else
+      tile_ctl(begg:endg)=arrayl(begg:endg)
+      end if
+      deallocate(arrayl)
+
     endif
 
 

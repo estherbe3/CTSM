@@ -73,13 +73,6 @@ module ColumnType
      logical , pointer :: hydrologically_active(:)   ! true if this column is a hydrologically active type
      logical , pointer :: urbpoi               (:)   ! true=>urban point
 
-     !Colum Characteristics for Excess Ice Calculations
-
-     real(r8), pointer :: a_tile                (:)  ! Area of the Tile for Excess Ice Tiling 
-     real(r8), pointer :: tile_ctl                (:)  ! Distance to other tile l
-     real(r8), pointer :: tile_dist               (:)  ! Distance to tile x
-
-
      ! levgrnd_class gives the class in which each layer falls. This is relevant for
      ! columns where there are 2 or more fundamentally different layer types. For
      ! example, this distinguishes between soil and bedrock layers. The particular value
@@ -147,11 +140,6 @@ contains
     allocate(this%hydrologically_active(begc:endc))            ; this%hydrologically_active(:) = .false.
     allocate(this%urbpoi      (begc:endc))                     ; this%urbpoi      (:)   = .false.
 
-    !if (use_excess_ice_tiles) then
-    allocate(this%a_tile    (begc:endc))                      ;this%a_tile        (:) = nan !read in geometrical variables for tiling
-    allocate(this%tile_dist (begc:endc))                       ;this%tile_dist     (:)   = nan
-    allocate(this%tile_ctl  (begc:endc))                       ;this%tile_ctl      (:)   = nan 
-    !endif
 
   end subroutine Init
 
@@ -189,11 +177,7 @@ contains
     deallocate(this%levgrnd_class)
     deallocate(this%hydrologically_active)
     deallocate(this%urbpoi)
-    !if (use_excess_ice_tiles) then
-    deallocate(this%a_tile)
-    deallocate(this%tile_dist)
-    deallocate(this%tile_ctl)
-    !endif
+
 
   end subroutine Clean
 

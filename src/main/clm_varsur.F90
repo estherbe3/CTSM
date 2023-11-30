@@ -55,5 +55,13 @@ module clm_instur
   !-----------------------------------------------------------------------
   ! excess ice tiling mask
   integer, pointer :: exice_tile_mask(:) 
+  
+  integer, pointer :: a_tile1(:)
+  
+  integer, pointer :: a_tile2(:)
+  
+  integer, pointer :: tile_dist(:)
+  
+  integer, pointer :: tile_ctl(:)
 
 end module clm_instur
