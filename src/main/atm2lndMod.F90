@@ -123,6 +123,7 @@ contains
     use WaterDiagnosticBulkType  , only : waterdiagnosticbulk_type
     use clm_varctl               , only : use_excess_ice_tiles
     use landunit_varcon          , only : istsoil
+    use clm_instur               , only : exice_tile_mask
     !
     ! !ARGUMENTS:
     type(bounds_type)  , intent(in)    :: bounds  
@@ -278,10 +279,10 @@ contains
             
      !Horizontal snow redistribution based on excess ice and snow 
       SnowDepthTreshold = 0.05_r8
-      if ( 0 == 1 ) then 
+      if ( use_excess_ice_tiles ) then 
          do g = bounds%begg,bounds%endg
             l = grc%landunit_indices(istsoil,g)            
-            if (lun%ncolumns(l) == 2) then
+            if (lun%ncolumns(l) == 2 .and. exice_tile_mask(g) == 1) then
                c1=lun%coli(l)
                c2=lun%colf(l)
                A1=70.0_r8

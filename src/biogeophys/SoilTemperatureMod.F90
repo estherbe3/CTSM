@@ -117,7 +117,7 @@ contains
     ! !USES:
     use clm_time_manager         , only : get_step_size_real
     use clm_varpar               , only : nlevsno, nlevgrnd, nlevurb, nlevmaxurbgrnd
-    use clm_varctl               , only : iulog, use_excess_ice, use_excess_ice_tiles
+    use clm_varctl               , only : iulog, use_excess_ice, use_excess_ice_tiles, use_tiles_lateral_heat
     use clm_varcon               , only : cnfac, cpice, cpliq, denh2o, denice
     use landunit_varcon          , only : istsoil, istcrop
     use column_varcon            , only : icol_roof, icol_sunwall, icol_shadewall, icol_road_perv, icol_road_imperv
@@ -508,9 +508,9 @@ contains
       end do
 
       ! calculate lateral heat flux between excess ice tiles
-      if (use_excess_ice_tiles) then
-         !call LateralHeatFlux(dtime, bounds, num_nolakec, filter_nolakec, cv, &
-         !temperature_inst, waterdiagnosticbulk_inst, soilstate_inst, energyflux_inst)
+      if (use_excess_ice_tiles .and. use_tiles_lateral_heat) then
+         call LateralHeatFlux(dtime, bounds, num_nolakec, filter_nolakec, cv, &
+         temperature_inst, waterdiagnosticbulk_inst, soilstate_inst, energyflux_inst)
       endif
 
 
