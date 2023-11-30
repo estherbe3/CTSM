@@ -200,6 +200,7 @@ contains
    use clm_varctl      , only : use_excess_ice_tiles
    use decompMod       , only : bounds_type, get_global_index, subgrid_level_column
    use clm_varctl      , only : excess_ice_split_factor
+   use clm_instur      , only : exice_tile_mask
    implicit none
    class(excessicestream_type)        :: this
    type(bounds_type),  intent(in)     :: bounds
@@ -227,11 +228,11 @@ contains
    if (use_excess_ice_tiles) then
       do g = bounds%begg,bounds%endg
           l = grc%landunit_indices(istsoil,g)
-          if (lun%ncolumns(l) == 2) then
+          if (lun%ncolumns(l) == 2 .and. exice_tile_mask(g) == 1) then
             c=lun%coli(l)
-            exice_bulk_init(c)=this%exice_bulk(g)*excess_ice_split_factor*2.0_r8 ! Will be read from the file
+            exice_bulk_init(c)=this%exice_bulk(g)*excess_ice_split_factor ! Will be read from the file
             c=lun%colf(l)
-            exice_bulk_init(c)=this%exice_bulk(g)*excess_ice_split_factor*2.0_r8 ! Will be read from the file
+            exice_bulk_init(c)=this%exice_bulk(g)*(1._r8-excess_ice_split_factor) ! Will be read from the file
             !call endrun(msg=' CONDITION WORKS '//errMsg(sourcefile, __LINE__))
           endif
       enddo

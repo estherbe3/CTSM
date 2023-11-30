@@ -704,47 +704,6 @@ contains
     end do
     deallocate(std)
 
-    !-----------------------------------------------
-    ! Read in Area and distance parameter for tiling: ESB
-    !-----------------------------------------------
-
-    allocate(Areatiles_in(bounds%begg:bounds%endg))
-    call ncd_io(ncid=ncid, varname='AREA_TILES', flag='read', data=Areatiles_in, dim1name=grlnd, readvar=readvar)
-    if (.not. readvar) then 
-       write(iulog,*) (' Warning: AREA_TILES NOT on surfdata file')
-       Areatiles_in(bounds%begg:bounds%endg)=4.0
-    endif 
-    do c = begc, endc
-      g = col%gridcell(c)
-     col%a_tile(c) = Areatiles_in(g)
-    end do
-    deallocate(Areatiles_in)
-
-    allocate(Tiles_dist(bounds%begg:bounds%endg))
-    call ncd_io(ncid=ncid, varname='TILE_dist', flag='read', data=Tiles_dist, dim1name=grlnd, readvar=readvar)
-    if (.not. readvar) then
-      write(iulog,*) (' Warning:Tile_distance non surfdata file')
-      Tiles_dist(bounds%begg:bounds%endg)=2.0
-   end if
-   do c = bounds%begc, bounds%endc
-      g = col%gridcell(c)
-      col%tile_dist(c) = Tiles_dist(g)
-   end do
-   deallocate(Tiles_dist)
-
-   allocate(Tiles_ctl(bounds%begg:bounds%endg))
-   call ncd_io(ncid=ncid, varname='TILE_ctl', flag='read', data=Tiles_ctl, dim1name=grlnd, readvar=readvar)
-   if (.not. readvar) then
-      write(iulog,*) (' Warning: Tile_ctl (contact length) non surfdata file')
-      Tiles_ctl(bounds%begg:bounds%endg)=0.3
-   end if
-   do c = bounds%begc, bounds%endc
-     g = col%gridcell(c)
-     col%tile_ctl(c) = Tiles_ctl(g)
-   end do
-   deallocate(Tiles_ctl)
-
-
   ! SCA shape function defined
 
     !-----------------------------------------------

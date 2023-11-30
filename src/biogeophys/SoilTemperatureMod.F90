@@ -509,8 +509,8 @@ contains
 
       ! calculate lateral heat flux between excess ice tiles
       if (use_excess_ice_tiles) then
-         call LateralHeatFlux(dtime, bounds, num_nolakec, filter_nolakec, cv, &
-         temperature_inst, waterdiagnosticbulk_inst, soilstate_inst, energyflux_inst)
+         !call LateralHeatFlux(dtime, bounds, num_nolakec, filter_nolakec, cv, &
+         !temperature_inst, waterdiagnosticbulk_inst, soilstate_inst, energyflux_inst)
       endif
 
 
@@ -3027,6 +3027,8 @@ end subroutine SetMatrix_Snow
       eflx_lateral_col => energyflux_inst%eflx_lateral_col &  ! Output: [real(r8) (:) ]  lateral heat flux into column [W/m2]
    )
 
+  if ( 0 == 1 ) then
+
    dx = 2.1_r8   ! Will be read from file
    dl = 26.7_r8  ! Will be read from file
    initdztile2(bounds%begg:bounds%endg) = 0.5_r8 ! Will be read from file
@@ -3134,6 +3136,8 @@ end subroutine SetMatrix_Snow
       !Output lateral heat flux (per layer or pr column)
    enddo !grid cell loop         
    !write(iulog,*) 'heat',eflx_lateral_col(c1),eflx_lateral_col(c2)
+
+   endif
    end associate 
 
   end subroutine LateralHeatFlux

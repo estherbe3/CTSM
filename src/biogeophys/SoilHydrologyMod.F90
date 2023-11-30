@@ -1754,7 +1754,8 @@ contains
          if (frost_table(c) > zwt_perched(c)) then
             l = col%landunit(c)               
             g = col%gridcell(c)                
-           if (lun%itype(col%landunit(c)) == istsoil .and. lun%ncolumns(l) == 2) then   
+           !if (lun%itype(col%landunit(c)) == istsoil .and. lun%ncolumns(l) == 2) then   
+           if ( 0 == 1 ) then   
            ! if (lun%ncolumns(l) == 2) then   
               c1=lun%coli(l)                  
               c2=lun%colf(l)                

@@ -50,6 +50,8 @@ contains
     use landunit_varcon  , only : istsoil, istcrop
     use column_varcon    , only : icol_roof, icol_sunwall, icol_shadewall, icol_road_perv
     use subgridAveMod    , only : p2c
+    use clm_varctl       , only : use_excess_ice_tiles
+    use clm_instur       , only : exice_tile_mask
     !
     ! !ARGUMENTS:
     type(bounds_type)      , intent(in)    :: bounds    
@@ -402,11 +404,15 @@ contains
       do fp = 1,num_nolakep
          p = filter_nolakep(fp)
          c = patch%column(p)
+         l = col%landunit(c)
+         g = col%gridcell(c)
          errsoi_patch(p) = eflx_soil_grnd(p) - xmf(c) - xmf_h2osfc(c) &
               - frac_h2osfc(c)*(t_h2osfc(c)-t_h2osfc_bef(c)) &
               *(c_h2osfc(c)/dtime)
          errsoi_patch(p) =  errsoi_patch(p)+eflx_h2osfc_to_snow_col(c) 
-         errsoi_patch(p) =  errsoi_patch(p)+eflx_lateral_col(c) 
+         if (use_excess_ice_tiles .and. exice_tile_mask(g) == 1 .and. lun%itype(l) == istsoil) then
+           errsoi_patch(p) =  errsoi_patch(p)+eflx_lateral_col(c) 
+         end if
          ! For urban sunwall, shadewall, and roof columns, the "soil" energy balance check
          ! must include the heat flux from the interior of the building.
          if (col%itype(c)==icol_sunwall .or. col%itype(c)==icol_shadewall .or. col%itype(c)==icol_roof) then

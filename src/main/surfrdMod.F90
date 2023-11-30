@@ -1000,6 +1000,8 @@ contains
   !
   use clm_varctl, only : use_excess_ice_tiles
   use clm_instur, only : exice_tile_mask
+  use clm_instur, only : wt_lunit
+  use landunit_varcon, only: istice
 
     !
     ! !ARGUMENTS:
@@ -1009,6 +1011,7 @@ contains
 
     !local variables
     integer  :: ier                            ! error status	
+    integer  :: g
     logical  :: readvar                        ! is variable on dataset
     integer,pointer :: arrayl(:)               ! local array (needed because ncd_io expects a pointer)
     character(len=32) :: subname = 'surfrd_exicetiles'  ! subroutine name
@@ -1016,13 +1019,19 @@ contains
      ! read tile mask
     if (use_excess_ice_tiles) then
       allocate(arrayl(begg:endg))
+      arrayl(begg:endg) = 0
       call ncd_io(ncid=ncid, varname='TWOTILES', flag='read', data=arrayl, &
            dim1name=grlnd, readvar=readvar)
       if (.not. readvar) then
          call endrun( msg=' ERROR: TWOTILES not on surface data file'//errMsg(sourcefile, __LINE__))
       else
-        exice_tile_mask(begg:endg) = arrayl(begg:endg)
-        
+        do g = begg,endg
+          if (wt_lunit(g,istice)>0) then
+           exice_tile_mask(g) = 0
+          else
+            exice_tile_mask(g) = arrayl(g)
+          end if
+        end do
       endif
       deallocate(arrayl)
     endif
