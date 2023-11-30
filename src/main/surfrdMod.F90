@@ -1051,7 +1051,7 @@ contains
       deallocate(arrayTile)
   
       allocate(arrayTile(begg:endg))
-      call ncd_io(ncid=ncid, varname='Tile_dist', flag='read', data=arrayTile, dim1name=grlnd, readvar=readvar)
+      call ncd_io(ncid=ncid, varname='TILE_DIST', flag='read', data=arrayTile, dim1name=grlnd, readvar=readvar)
       if (.not. readvar) then
         write(iulog,*) (' Warning:Tile_distance non surfdata file')
          tile_dist(begg:endg)=2.1
@@ -1061,7 +1061,7 @@ contains
       deallocate(arrayTile)
   
       allocate(arrayTile(begg:endg))
-      call ncd_io(ncid=ncid, varname='Tile_ctl', flag='read', data=arrayTile, dim1name=grlnd, readvar=readvar)
+      call ncd_io(ncid=ncid, varname='TILE_CTL', flag='read', data=arrayTile, dim1name=grlnd, readvar=readvar)
       if (.not. readvar) then
         write(iulog,*) (' Warning: Tile_ctl (contact length) non surfdata file')
         tile_ctl(begg:endg)=27.1
