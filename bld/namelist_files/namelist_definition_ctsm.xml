@@ -2876,13 +2876,19 @@ If TRUE turn on the excess ice physics, (Lee et al., 2014; Cai et al., 2020)
 
 <entry id="use_excess_ice_tiles" type="logical" category="clm_physics"
         group="clm_inparm" valid_values="" >
-If TRUE turn on the excess ice tiling physics, (Lee et al., 2014; Cai et al., 2020)
+If TRUE turn on the excess ice tiling physics, (Aas et al., 2019; Smith et al., 2022)
 </entry>
 
 <entry id="excess_ice_split_factor" type="real" category="clm_physics"
        group="clm_inparm"   >
 Fraction if excess ice which first tile will get.
 </entry>
+
+<entry id="use_tiles_lateral_heat" type="logical" category="clm_physics"
+        group="clm_inparm" valid_values="" >
+If TRUE turn on lateral heatflux in the excess ice tiling physics, (Aas et al., 2019; Smith et al., 2022)
+</entry>
+
 
 <entry id="use_excess_ice_streams" type="logical" category="clm_physics"
         group="exice_streams" valid_values="" >

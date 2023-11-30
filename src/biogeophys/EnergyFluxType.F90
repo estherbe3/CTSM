@@ -614,7 +614,7 @@ contains
          ptr_col=this%eflx_fgr_col, set_spec=spval, default='inactive')
 
     if (use_excess_ice_tiles) then
-       this%eflx_lateral_col(begc:endc) = spval
+       this%eflx_lateral_col(begc:endc) = 0.0_r8
        call hist_addfld1d (fname='LAT_HEATFLUX', units='watt/m^2', &
             avgflag='A', long_name='Lateral heat flux between two soil columns', &
             ptr_col=this%eflx_lateral_col, set_spec=spval, default='active')
@@ -716,6 +716,7 @@ contains
     use column_varcon   , only : icol_road_imperv, icol_roof, icol_sunwall
     use column_varcon   , only : icol_shadewall, icol_road_perv
     use clm_varctl      , only : use_vancouver, use_mexicocity
+    use clm_varctl      , only : use_excess_ice_tiles
     implicit none
     !
     ! !ARGUMENTS:
@@ -748,6 +749,9 @@ contains
 
        end do
     end if
+
+    this%eflx_lateral_col(bounds%begc:bounds%endc)=0._r8
+
 
     ! Patches
     do p = bounds%begp, bounds%endp 
@@ -818,6 +822,7 @@ contains
                             ncd_inqvdlen
     use restUtilMod
     use decompMod      , only : get_proc_global
+    use clm_varctl     , only : use_excess_ice_tiles
     implicit none
     !
     ! !ARGUMENTS:
@@ -918,6 +923,18 @@ contains
 
     call this%eflx_dynbal_dribbler%Restart(bounds, ncid, flag)
 
+    if (use_excess_ice_tiles) then 
+      this%eflx_lateral_col(bounds%begc:bounds%endc) = 0._r8
+      call restartvar(ncid=ncid, flag=flag, varname='EFLX_LATERAL', xtype=ncd_double, &
+              dim1name='column', &
+              long_name='Lateral flux between columns', units='watt/m^2', &
+              interpinic_flag='interp', readvar=readvar, data=this%eflx_lateral_col)
+       if (flag=='read' .and. .not. readvar) then
+          if (masterproc) write(iulog,*) "can't find EFLX_LATERAL in initial file..."
+          if (masterproc) write(iulog,*) "Initialize EFLX_LATERAL to zero"
+          this%eflx_lateral_col(bounds%begc:bounds%endc) = 0._r8
+       end if
+    endif
   end subroutine Restart
   !-----------------------------------------------------------------------
   subroutine InitAccBuffer (this, bounds)

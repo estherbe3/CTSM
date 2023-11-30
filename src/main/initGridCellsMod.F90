@@ -207,6 +207,7 @@ contains
     use clm_instur, only : wt_lunit, wt_nat_patch
     use subgridMod, only : subgrid_get_info_natveg, natveg_patch_exists
     use clm_varpar, only : natpft_lb, natpft_ub, natpft_size
+    use clm_instur      , only : exice_tile_mask
     !
     ! !ARGUMENTS:
     integer , intent(in)    :: ltype             ! landunit type
@@ -214,6 +215,7 @@ contains
     integer , intent(inout) :: li                ! landunit index
     integer , intent(inout) :: ci                ! column index
     integer , intent(inout) :: pi                ! patch index
+
     !
     ! !LOCAL VARIABLES:
     integer  :: m,lci                               ! index
@@ -241,29 +243,32 @@ contains
        call add_landunit(li=li, gi=gi, ltype=ltype, wtgcell=wtlunit2gcell)
        nlunits_added = nlunits_added + 1
        do lci = 1,ncols
-       ! Assume one column on the landunit
-       call add_column(ci=ci, li=li, ctype=1, wtlunit=1.0_r8/real(ncols,r8))
-       ncols_added = ncols_added + 1
-
-       ! For FATES: the total number of patches may not match what is in the surface
-       ! file, and therefor the weighting can't be used. The weightings in
-       ! wt_nat_patch may be meaningful (like with fixed biogeography), but they
-       ! they need a mapping table to connect to the allocated patches (in fates)
-       ! so the wt_nat_patch array is not applicable to these area weights
-       ! A subsequent call, via the clmfates interface will update these weights
-       ! by using said mapping table
-       
-       do m = natpft_lb,natpft_ub
-          if (natveg_patch_exists(gi, m)) then
-             if(use_fates .and. .not.use_fates_sp)then
-                p_wt = 1.0_r8/real(natpft_size,r8)
-             else
-                p_wt = wt_nat_patch(gi,m)
-             end if
-             call add_patch(pi=pi, ci=ci, ptype=m, wtcol=p_wt)
-             npatches_added = npatches_added + 1
+          ! Assume one column on the landunit
+          if (exice_tile_mask(gi) == 1) then
+             call add_column(ci=ci, li=li, ctype=1, wtlunit=0.5_r8)
+          else
+             call add_column(ci=ci, li=li, ctype=1, wtlunit=1.0_r8)
           end if
-       end do
+          ncols_added = ncols_added + 1
+         ! For FATES: the total number of patches may not match what is in the surface
+         ! file, and therefor the weighting can't be used. The weightings in
+         ! wt_nat_patch may be meaningful (like with fixed biogeography), but they
+         ! they need a mapping table to connect to the allocated patches (in fates)
+         ! so the wt_nat_patch array is not applicable to these area weights
+         ! A subsequent call, via the clmfates interface will update these weights
+         ! by using said mapping table
+       
+          do m = natpft_lb,natpft_ub
+             if (natveg_patch_exists(gi, m)) then
+                if(use_fates .and. .not.use_fates_sp)then
+                   p_wt = 1.0_r8/real(natpft_size,r8)
+                else
+                   p_wt = wt_nat_patch(gi,m)
+                end if
+                call add_patch(pi=pi, ci=ci, ptype=m, wtcol=p_wt)
+                npatches_added = npatches_added + 1
+             end if
+          end do
        end do
 
     end if

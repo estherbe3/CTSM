@@ -999,16 +999,16 @@ contains
               long_name=this%info%lname('vertically summed volumetric excess ice concentration (veg landunits only)'), &
               units='m', &
               interpinic_flag='interp', readvar=readvar, data=this%exice_subs_tot_acc)
-          call restartvar(ncid=ncid, flag=flag, varname=this%info%fname('ZADJ'),  &
-              dim1name='column', xtype=ncd_double, &
-              long_name=this%info%lname('adjusted depth (0 is higher tile at coldstart) for Excess Ice tiles (veg. landunits only))'), &
-              units='m', &
-              interpinic_flag='interp', readvar=readvar, data=this%z_adj_col)
-          call restartvar(ncid=ncid, flag=flag, varname=this%info%fname('DZADJ'),  &
-              dim1name='column', xtype=ncd_double, &
-              long_name=this%info%lname('adjusted layer thickness for Excess Ice tiles (veg. landunits only))'), &
-              units='m', &
-              interpinic_flag='interp', readvar=readvar, data=this%z_adj_col)
+          !call restartvar(ncid=ncid, flag=flag, varname=this%info%fname('ZADJ'),  &
+          !    dim1name='column', xtype=ncd_double, &
+          !    long_name=this%info%lname('adjusted depth (0 is higher tile at coldstart) for Excess Ice tiles (veg. landunits only))'), &
+          !    units='m', &
+          !    interpinic_flag='interp', readvar=readvar, data=this%z_adj_col)
+          !call restartvar(ncid=ncid, flag=flag, varname=this%info%fname('DZADJ'),  &
+          !    dim1name='column', xtype=ncd_double, &
+          !    long_name=this%info%lname('adjusted layer thickness for Excess Ice tiles (veg. landunits only))'), &
+          !    units='m', &
+          !    interpinic_flag='interp', readvar=readvar, data=this%z_adj_col)
           if (flag == 'read' .and. (.not. readvar)) then
             this%exice_subs_tot_acc(bounds%begc:bounds%endc)=0.0_r8
             this%z_adj_col(bounds%begc:bounds%endc,-nlevsno+1:nlevmaxurbgrnd)=0.0_r8
