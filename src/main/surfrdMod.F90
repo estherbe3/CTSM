@@ -1011,6 +1011,7 @@ contains
     integer  :: ier                            ! error status	
     logical  :: readvar                        ! is variable on dataset
     integer,pointer :: arrayl(:)               ! local array (needed because ncd_io expects a pointer)
+    real(r8), pointer :: arrayTile(:)          ! local array
     character(len=32) :: subname = 'surfrd_exicetiles'  ! subroutine name
 
      ! read tile mask
@@ -1029,45 +1030,45 @@ contains
       !Read in Area and distance parameter for tiling: ESB
       !-----------------------------------------------
   
-      allocate(arrayl(begg:endg))
-      call ncd_io(ncid=ncid, varname='AREA_TILE1', flag='read', data=arrayl, dim1name=grlnd, readvar=readvar)
+      allocate(arrayTile(begg:endg))
+      call ncd_io(ncid=ncid, varname='AREA_TILE1', flag='read', data=arrayTile, dim1name=grlnd, readvar=readvar)
       if (.not. readvar) then 
          write(iulog,*) (' Warning: AREA_TILE1 NOT on surfdata file')
          a_tile1(begg:endg)=70.0
       else 
-         a_tile1(begg:endg)= arrayl(begg:endg)
+         a_tile1(begg:endg)= arrayTile(begg:endg)
       endif 
-      deallocate(arrayl)
+      deallocate(arrayTile)
 
-      allocate(arrayl(begg:endg))
-      call ncd_io(ncid=ncid, varname='AREA_TILE2', flag='read', data=arrayl, dim1name=grlnd, readvar=readvar)
+      allocate(arrayTile(begg:endg))
+      call ncd_io(ncid=ncid, varname='AREA_TILE2', flag='read', data=arrayTile, dim1name=grlnd, readvar=readvar)
       if (.not. readvar) then 
          write(iulog,*) (' Warning: AREA_TILE2 NOT on surfdata file')
          a_tile2(begg:endg)=58.0
       else 
-         a_tile2(begg:endg)=arrayl(begg:endg)
+         a_tile2(begg:endg)=arrayTile(begg:endg)
       endif 
-      deallocate(arrayl)
+      deallocate(arrayTile)
   
-      allocate(arrayl(begg:endg))
-      call ncd_io(ncid=ncid, varname='TILE_dist', flag='read', data=arrayl, dim1name=grlnd, readvar=readvar)
+      allocate(arrayTile(begg:endg))
+      call ncd_io(ncid=ncid, varname='Tile_dist', flag='read', data=arrayTile, dim1name=grlnd, readvar=readvar)
       if (.not. readvar) then
         write(iulog,*) (' Warning:Tile_distance non surfdata file')
-        Tiles_dist(begg:endg)=2.1
+         tile_dist(begg:endg)=2.1
       else
-         tile_dist(begg:endg) = arrayl(begg:endg)
+         tile_dist(begg:endg) = arrayTile(begg:endg)
       end if
-      deallocate(arrayl)
+      deallocate(arrayTile)
   
-      allocate(arrayl(bounds%begg:bounds%endg))
-      call ncd_io(ncid=ncid, varname='TILE_ctl', flag='read', data=arrayl, dim1name=grlnd, readvar=readvar)
+      allocate(arrayTile(begg:endg))
+      call ncd_io(ncid=ncid, varname='Tile_ctl', flag='read', data=arrayTile, dim1name=grlnd, readvar=readvar)
       if (.not. readvar) then
         write(iulog,*) (' Warning: Tile_ctl (contact length) non surfdata file')
-        Tiles_ctl(bounds%begg:bounds%endg)=0.3
+        tile_ctl(begg:endg)=27.1
       else
-      tile_ctl(begg:endg)=arrayl(begg:endg)
+      tile_ctl(begg:endg)=arrayTile(begg:endg)
       end if
-      deallocate(arrayl)
+      deallocate(arrayTile)
 
     endif
 

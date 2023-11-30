@@ -241,9 +241,9 @@ contains
     allocate (wt_nat_patch (begg:endg, surfpft_lb:surfpft_ub ))
     if (use_excess_ice_tiles) then
        allocate (exice_tile_mask  (begg:endg            ))
-       allocate (a_tile1   (begg:extends_type_of         ))
+       allocate (a_tile1   (begg:endg         ))
        allocate (a_tile2   (begg:endg                    ))
-       allocate (tile_dist (begg_endg                    ))
+       allocate (tile_dist (begg:endg                    ))
        allocate (tile_ctl  (begg:endg                    ))
     endif
     
