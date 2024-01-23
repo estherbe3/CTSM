@@ -135,7 +135,7 @@ contains
     real(r8)           , intent(out)   :: eflx_sh_precip_conversion(bounds%begc:) ! sensible heat flux from precipitation conversion (W/m**2) [+ to atm]
     !
     ! !LOCAL VARIABLES:
-    integer :: g, l, c, fc, c1, c2         ! indices
+    integer :: g, l, c, fc, c1, c2     ! indices
     integer :: clo, cc
     type(filter_col_type) :: downscale_filter_c
     real(r8) :: initdztile2(bounds%begg:bounds%endg) ! Initial elevation difference between top of tile 2 compared to tile 1 
@@ -281,7 +281,7 @@ contains
       SnowDepthTreshold = 0.05_r8
       if ( use_excess_ice_tiles ) then 
          do g = bounds%begg,bounds%endg
-            l = grc%landunit_indices(istsoil,g)            
+            l = grc%landunit_indices(istsoil,g)   
             if (lun%ncolumns(l) == 2 .and. exice_tile_mask(g) == 1) then
                c1=lun%coli(l)
                c2=lun%colf(l)
@@ -289,10 +289,8 @@ contains
                A2=58.0_r8 
                !A1=col%a_tile(c1)     !read geometry of files
                !A2=col%a_tile(c2)
-               !dztile2 = (initdztile2(g) + exice_subs_tot_acc(c2) + snow_depth(c2)) - &
-                      !   (exice_subs_tot_acc(c1) + snow_depth(c1))! get the difference between the top of the snow on tiles
                dztile2 = (initdztile2(g) + exice_subs_tot_acc(c2) - snow_depth(c2)) - &
-                         (-exice_subs_tot_acc(c1) - snow_depth(c1))!      correct signs for snow redistribution 
+                      (-exice_subs_tot_acc(c1) - snow_depth(c1))!      correct signs for snow redistribution 
                !write(iulog,*) 'dztile=',dztile2,'snow_dP2', snow_depth(c2), 'exiceSub2= ', exice_subs_tot_acc(c2)        
                !write(iulog,*) 'snow_dP1', snow_depth(c1), 'exiceSub1= ', exice_subs_tot_acc(c1)  
                   if (dztile2 >  SnowDepthTreshold) then
@@ -301,7 +299,7 @@ contains
                   forc_snow_c(c2) = forc_snow_c(c2) * 2.0_r8
                   !call endrun(subgrid_index=c, subgrid_level=subgrid_level_column, &
                   !msg=errMsg(sourcefile, __LINE__))
-               elseif (dztile2 < - SnowDepthTreshold) then
+                   elseif (dztile2 < - SnowDepthTreshold) then
                   forc_snow_c(c1) = forc_snow_c(c1) * 2.0_r8
                   forc_snow_c(c2) = 0.0_r8
                   !call endrun(subgrid_index=c, subgrid_level=subgrid_level_column, &

@@ -1018,13 +1018,15 @@ contains
     character(len=32) :: subname = 'surfrd_exicetiles'  ! subroutine name
 
      ! read tile mask
-    if (use_excess_ice_tiles) then
+ 
+ 
       allocate(arrayl(begg:endg))
       arrayl(begg:endg) = 0
       call ncd_io(ncid=ncid, varname='TWOTILES', flag='read', data=arrayl, &
            dim1name=grlnd, readvar=readvar)
-      if (.not. readvar) then
-         call endrun( msg=' ERROR: TWOTILES not on surface data file'//errMsg(sourcefile, __LINE__))
+      if (.not. readvar) then 
+            write(iulog,*) (' Warning: TWOTILES NOT on surfdata file')
+            exice_tile_mask(begg:endg)=0
       else
         do g = begg,endg
           if (wt_lunit(g,istice)>0) then
@@ -1038,7 +1040,7 @@ contains
 
       !Read in Area and distance parameter for tiling: ESB
       !-----------------------------------------------
-  
+    if (use_excess_ice_tiles) then  
       allocate(arrayTile(begg:endg))
       call ncd_io(ncid=ncid, varname='AREA_TILE1', flag='read', data=arrayTile, dim1name=grlnd, readvar=readvar)
       if (.not. readvar) then 

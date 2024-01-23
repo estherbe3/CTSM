@@ -157,8 +157,12 @@ contains
 
     if (npatches > 0) then
        ! Assume that the vegetated landunit has one column
-       if (use_excess_ice_tiles .and. exice_tile_mask(gi) == 1) then
+       if (use_excess_ice_tiles) then 
+         if(exice_tile_mask(gi) == 1) then
           ncols = 2
+         else 
+          ncols =1
+         endif
        else
           ncols = 1
        endif

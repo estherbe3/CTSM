@@ -239,8 +239,9 @@ contains
     allocate (haslake      (begg:endg                      ))
     allocate (pct_urban_max(begg:endg, numurbl             ))
     allocate (wt_nat_patch (begg:endg, surfpft_lb:surfpft_ub ))
-    if (use_excess_ice_tiles) then
-       allocate (exice_tile_mask  (begg:endg            ))
+    
+    allocate (exice_tile_mask  (begg:endg            ))
+    if (use_excess_ice_tiles) then   
        allocate (a_tile1   (begg:endg         ))
        allocate (a_tile2   (begg:endg                    ))
        allocate (tile_dist (begg:endg                    ))

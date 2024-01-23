@@ -128,7 +128,7 @@ class SinglePointCase(BaseCase):
         self.plon = plon
         self.site_name = site_name
         self.dom_pft = dom_pft
-        self.evenly_split_cropland = evenly_split_cropland
+        self.evenly_split_cropland =evenly_split_cropland
         self.pct_pft = pct_pft
         self.num_pft = num_pft
         self.include_nonveg = include_nonveg

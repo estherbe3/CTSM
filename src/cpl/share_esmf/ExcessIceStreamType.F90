@@ -226,10 +226,17 @@ contains
    enddo
 
    if (use_excess_ice_tiles) then
+      !excess_ice_split_factor=0.3
+      write(iulog,*) 'Excess_ice_splitfacotr =', excess_ice_split_factor
       do g = bounds%begg,bounds%endg
           l = grc%landunit_indices(istsoil,g)
+          c =lun%ncolumns(l)
+          write(iulog,*) 'ncolumns=', c
+          write(iulog,*)'exicetile_mask= ',exice_tile_mask(g)
+          write(iulog,*) 'Landunittypes', lun%itype(l)
           if (lun%ncolumns(l) == 2 .and. exice_tile_mask(g) == 1) then
             c=lun%coli(l)
+            !write(iulog,*) ('coli=',c)
             exice_bulk_init(c)=this%exice_bulk(g)*excess_ice_split_factor ! Will be read from the file
             c=lun%colf(l)
             exice_bulk_init(c)=this%exice_bulk(g)*(1._r8-excess_ice_split_factor) ! Will be read from the file
