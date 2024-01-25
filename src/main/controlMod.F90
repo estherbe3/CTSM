@@ -251,7 +251,7 @@ contains
 
     namelist /clm_inparm/ excess_ice_split_factor
 
-    namelist /clm_inparam/ use_tiles_lateral_heat
+    namelist /clm_inparm/ use_tiles_lateral_heat
 
     namelist /clm_inparm/ use_lai_streams
 
