@@ -508,7 +508,7 @@ contains
       end do
 
       ! calculate lateral heat flux between excess ice tiles
-      if (use_excess_ice_tiles .and. use_tiles_lateral_heat) then
+      if (use_excess_ice_tiles .and. use_tiles_lateral_heat) then 
          call LateralHeatFlux(dtime, bounds, num_nolakec, filter_nolakec, cv, &
          temperature_inst, waterdiagnosticbulk_inst, soilstate_inst, energyflux_inst)
       endif
@@ -3018,16 +3018,16 @@ end subroutine SetMatrix_Snow
    !-----------------------------------------------------------------------
 
    associate(                                             & 
-      dz           =>    col%dz			                 , & ! Input:  [real(r8) (:,:) ]  layer depth (m)                       
+      dz           =>    col%dz			                 , & ! Input:  [real(r8) (:,:) ]  layer thickness (m) 
       zi           =>    col%zi			                 , & ! Input:  [real(r8) (:,:) ]  interface level below a "z" level (m) 
-      z            =>    col%z			                 , & ! Input:  [real(r8) (:,:) ]  layer thickness (m)                   
+      z            =>    col%z			                 , & ! Input:  [real(r8) (:,:) ]   layer depth (m)    node depht                    
       exice_subs_tot_acc   =>    waterdiagnosticbulk_inst%exice_subs_tot_acc      , & ! Input: [real(r8) (:) ]  subsidence due to excess ice melt (m)   
       t_soisno     =>    temperature_inst%t_soisno_col    , & ! Input:  [real(r8) (:,:) ]  soil temperature [K]                         
       thk          =>    soilstate_inst%thk_col           , & ! Input: [real(r8) (:,:) ]  thermal conductivity of each layer  [W/m-K] 
       eflx_lateral_col => energyflux_inst%eflx_lateral_col &  ! Output: [real(r8) (:) ]  lateral heat flux into column [W/m2]
    )
 
-  if ( 0 == 1 ) then
+ ! if ( 0 == 1 ) then
 
    dx = 2.1_r8   ! Will be read from file
    dl = 26.7_r8  ! Will be read from file
@@ -3041,19 +3041,9 @@ end subroutine SetMatrix_Snow
 
    do g = bounds%begg,bounds%endg
       l = grc%landunit_indices(istsoil,g)            
-      if (lun%ncolumns(l) == 2) then
+      if (lun%ncolumns(l) == 2) then  ! maybe (if Tiling mask=1)?
          c1=lun%coli(l)
          c2=lun%colf(l)
-         !A1=col%a_tile(c1)     !read geometry of files
-         !A2=col%a_tile(c2)
-         !dx = col%tile_dist(c1)+ col%tile_dist(c2)
-         !dl= col%tile_ctl(c1)
-         !dx=col%tile_ctl(c1)
-         !dl=col%tile_dist(c1)
-
-         !write(iulog,*) 'AreaTile1',A1
-         !!write(iulog,*) 'AreaTile2', A2
-         !write(iulog,*) "Tile_distance = ", dx, "tile_contact= ",dl
 
          !Update elevation of tile2 relative to tile1
          dztile2 = initdztile2(g) + exice_subs_tot_acc(c2) - exice_subs_tot_acc(c1)                
@@ -3075,7 +3065,8 @@ end subroutine SetMatrix_Snow
             tl1zbot = zi(c1,j1) 
             tl2ztop = zi(c2,j2) - dz(c2,j2) + dztile2 !top of tile2 relative to tile1
             tl2zbot = zi(c2,j2) + dztile2    
-            !write(iulog,*) 'height_tiles',tl1ztop,tl2ztop,dztile2
+            write(iulog,*) 'height_tiles', j1, tl1ztop,tl1zbot,dztile2
+            write(iulog,*) 'low_tiles', j2, tl2ztop,tl2zbot
             dzhhf = min(tl1zbot,tl2zbot)-max(tl1ztop,tl2ztop) !calculate thickness of overlaping part of layer j1 and j2
 
             if (dzhhf<0.0_r8) then !dzhhf will be negative if there is no interface, so flux should be zero. 
@@ -3093,17 +3084,19 @@ end subroutine SetMatrix_Snow
             !if (j1==18) then
             !   write(iulog,*) 'middle_18',hhf_interface,'temp_diff',t_soisno(c2,j2) - t_soisno(c1,j1)
             !endif
-            !update index
+            !update index  
             if (tl1zbot <= tl2zbot) then 
-               j2=j2+1
-               if (j2 > nlevmaxurbgrnd) then
-                  j2 = nlevmaxurbgrnd
-                  exit do_layers
-               endif
-            else if(tl2zbot <= tl1zbot) then 
+               !j2=j2+1  
                j1=j1+1
                if (j1 > nlevmaxurbgrnd) then
                   j1 = nlevmaxurbgrnd
+                  exit do_layers
+               endif
+            else if(tl2zbot <= tl1zbot) then 
+               !j1=j1+1
+               j2=j2+1
+               if (j2 > nlevmaxurbgrnd) then
+                  j2 = nlevmaxurbgrnd
                   exit do_layers
                endif
             endif
@@ -3137,7 +3130,7 @@ end subroutine SetMatrix_Snow
    enddo !grid cell loop         
    !write(iulog,*) 'heat',eflx_lateral_col(c1),eflx_lateral_col(c2)
 
-   endif
+   !endif
    end associate 
 
   end subroutine LateralHeatFlux
