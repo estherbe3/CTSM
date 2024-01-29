@@ -3085,15 +3085,13 @@ end subroutine SetMatrix_Snow
             !   write(iulog,*) 'middle_18',hhf_interface,'temp_diff',t_soisno(c2,j2) - t_soisno(c1,j1)
             !endif
             !update index  
-            if (tl1zbot <= tl2zbot) then 
-               !j2=j2+1  
+            if (tl1zbot <= tl2zbot) then  
                j1=j1+1
                if (j1 > nlevmaxurbgrnd) then
                   j1 = nlevmaxurbgrnd
                   exit do_layers
                endif
             else if(tl2zbot <= tl1zbot) then 
-               !j1=j1+1
                j2=j2+1
                if (j2 > nlevmaxurbgrnd) then
                   j2 = nlevmaxurbgrnd

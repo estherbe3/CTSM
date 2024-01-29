@@ -290,9 +290,7 @@ contains
                !A1=col%a_tile(c1)     !read geometry of files
                !A2=col%a_tile(c2)
                dztile2 = (initdztile2(g) + exice_subs_tot_acc(c2) - snow_depth(c2)) - &
-                      (-exice_subs_tot_acc(c1) - snow_depth(c1))!      correct signs for snow redistribution 
-               !write(iulog,*) 'dztile=',dztile2,'snow_dP2', snow_depth(c2), 'exiceSub2= ', exice_subs_tot_acc(c2)        
-               !write(iulog,*) 'snow_dP1', snow_depth(c1), 'exiceSub1= ', exice_subs_tot_acc(c1)  
+                      (-exice_subs_tot_acc(c1) - snow_depth(c1))!    
                   if (dztile2 >  SnowDepthTreshold) then
                   !Scale snow forcing.  Include different Tile Areas 
                   forc_snow_c(c1) = 0.0_r8
