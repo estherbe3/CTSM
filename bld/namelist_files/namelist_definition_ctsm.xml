@@ -2889,6 +2889,10 @@ Fraction if excess ice which first tile will get.
 If TRUE turn on lateral heatflux in the excess ice tiling physics, (Aas et al., 2019; Smith et al., 2022)
 </entry>
 
+<entry id="use_tiles_snow" type="logical" category="clm_physics"
+        group="clm_inparm" valid_values="" >
+If TRUE turn on snow redistribution in the excess ice tiling physics, (Aas et al., 2019; Smith et al., 2022)
+</entry>
 
 <entry id="use_excess_ice_streams" type="logical" category="clm_physics"
         group="exice_streams" valid_values="" >

@@ -14,7 +14,7 @@ module atm2lndMod
   use clm_varcon     , only : rair, grav, cpair, hfus, tfrz, denh2o, spval
   use clm_varcon     , only : wv_to_dair_weight_ratio
   use clm_varpar     , only : nlevgrnd
-  use clm_varctl     , only : iulog, use_c13, use_cn, use_lch4, iulog, use_excess_ice_tiles
+  use clm_varctl     , only : iulog, use_c13, use_cn, use_lch4, iulog, use_excess_ice_tiles, use_tiles_snow
   use abortutils     , only : endrun
   use decompMod      , only : bounds_type, subgrid_level_gridcell, subgrid_level_column
   use atm2lndType    , only : atm2lnd_type
@@ -121,7 +121,7 @@ contains
     use GridcellType             , only : grc
     use WaterStateBulkType       , only : waterstatebulk_type
     use WaterDiagnosticBulkType  , only : waterdiagnosticbulk_type
-    use clm_varctl               , only : use_excess_ice_tiles
+    use clm_varctl               , only : use_excess_ice_tiles, use_tiles_snow
     use landunit_varcon          , only : istsoil
     use clm_instur               , only : exice_tile_mask
     !
@@ -279,7 +279,7 @@ contains
             
      !Horizontal snow redistribution based on excess ice and snow 
       SnowDepthTreshold = 0.05_r8
-      if ( use_excess_ice_tiles ) then 
+      if ( use_excess_ice_tiles .and. use_tiles_snow) then 
          do g = bounds%begg,bounds%endg
             l = grc%landunit_indices(istsoil,g)   
             if (lun%ncolumns(l) == 2 .and. exice_tile_mask(g) == 1) then
@@ -294,13 +294,13 @@ contains
                !write(iulog,*) 'dztile=',dztile2,'snow_dP2', snow_depth(c2), 'exiceSub2= ', exice_subs_tot_acc(c2)        
                !write(iulog,*) 'snow_dP1', snow_depth(c1), 'exiceSub1= ', exice_subs_tot_acc(c1)  
                   if (dztile2 >  SnowDepthTreshold) then
-                  !Scale snow forcing. For now assumes equal sizes of the two tiles
+                  !Scale snow forcing.  Include different Tile Areas 
                   forc_snow_c(c1) = 0.0_r8
-                  forc_snow_c(c2) = forc_snow_c(c2) * 2.0_r8
+                  forc_snow_c(c2) = forc_snow_c(c2) *2.0_r8 !* (A1/A2)
                   !call endrun(subgrid_index=c, subgrid_level=subgrid_level_column, &
                   !msg=errMsg(sourcefile, __LINE__))
                    elseif (dztile2 < - SnowDepthTreshold) then
-                  forc_snow_c(c1) = forc_snow_c(c1) * 2.0_r8
+                  forc_snow_c(c1) = forc_snow_c(c1)* 2.0_r8!  forc_snow_c(c1)*(A2/A1)
                   forc_snow_c(c2) = 0.0_r8
                   !call endrun(subgrid_index=c, subgrid_level=subgrid_level_column, &
                   !msg=errMsg(sourcefile, __LINE__))
