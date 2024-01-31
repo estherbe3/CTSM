@@ -346,6 +346,7 @@ module clm_varctl
   real(r8), public :: excess_ice_split_factor = 0.0_r8 !
   logical, public :: use_tiles_lateral_heat = .false.
   logical, public :: use_tiles_snow = .false.
+  logical, public :: use_tiles_lateral_water = .false.
 
   !----------------------------------------------------------
   ! plant hydraulic stress switch

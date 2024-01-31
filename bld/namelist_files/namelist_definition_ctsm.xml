@@ -2894,6 +2894,11 @@ If TRUE turn on lateral heatflux in the excess ice tiling physics, (Aas et al., 
 If TRUE turn on snow redistribution in the excess ice tiling physics, (Aas et al., 2019; Smith et al., 2022)
 </entry>
 
+<entry id="use_tiles_lateral_water" type="logical" category="clm_physics"
+        group="clm_inparm" valid_values="" >
+If TRUE turn on lateral water flux in the excess ice tiling physics, (Aas et al., 2019; Smith et al., 2022)
+</entry>
+
 <entry id="use_excess_ice_streams" type="logical" category="clm_physics"
         group="exice_streams" valid_values="" >
 If TRUE and use_excess_ice is TRUE, use the excess ice stream to determine the initial values of the excess ice field

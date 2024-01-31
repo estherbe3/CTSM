@@ -4336,6 +4336,7 @@ sub setup_logic_exice {
   my $excess_ice_split_factor = $nl->get_value( 'excess_ice_split_factor' );
   my $use_tiles_lateral_heat = $nl->get_value( 'use_tiles_lateral_heat' );
   my $use_tiles_snow = $nl->get_value ('use_tiles_snow');
+  my $use_tiles_lateral_water = $nl->get_value ('use_tiles_lateral_water');
   # IF excess ice streams is on
   if (defined($use_exice_streams) && value_is_true($use_exice_streams)) {
      # Can only be true if excess ice is also on, otherwise fail
@@ -4382,7 +4383,9 @@ sub setup_logic_exice {
    if ( (! value_is_true($use_excess_ice_tiles) || ! value_is_true($use_exice) ) && value_is_true($use_tiles_snow)) {
       $log->fatal_error("cannot have use_tiles_snow without use_excess_ice_tiles == true" );
   }
-
+  if ( (! value_is_true($use_excess_ice_tiles) || ! value_is_true($use_exice) ) && value_is_true($use_tiles_lateral_water)) {
+      $log->fatal_error("cannot have use_tiles_lateral_water without use_excess_ice_tiles == true" );
+  }
     
 
 } # end exice streams

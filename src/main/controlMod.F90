@@ -255,6 +255,8 @@ contains
 
     namelist /clm_inparm/ use_tiles_snow
 
+    namelist /clm_inparm/ use_tiles_lateral_water
+
     namelist /clm_inparm/ use_lai_streams
 
     namelist /clm_inparm/ use_bedrock
@@ -793,6 +795,8 @@ contains
 
     call mpi_bcast (use_tiles_snow, 1, MPI_LOGICAL, 0, mpicom,ier)
 
+    call mpi_bcast (use_tiles_lateral_water, 1, MPI_LOGICAL, 0, mpicom,ier)
+
     call mpi_bcast (use_lai_streams, 1, MPI_LOGICAL, 0, mpicom, ier)
 
     call mpi_bcast (use_cropcal_streams, 1, MPI_LOGICAL, 0, mpicom, ier)
@@ -937,6 +941,7 @@ contains
     write(iulog,*) '    excess_ice_split_factor = ', excess_ice_split_factor
     write(iulog,*) '    use_tiles_lateral_heat = ', use_tiles_lateral_heat
     write(iulog,*) '    use_tiles_snow = ', use_tiles_snow
+    write(iulog,*) '    use_tiles_lateral_water = ', use_tiles_lateral_water
     write(iulog,*) '    use_cn = ', use_cn
     write(iulog,*) '    use_cndv = ', use_cndv
     write(iulog,*) '    use_crop = ', use_crop

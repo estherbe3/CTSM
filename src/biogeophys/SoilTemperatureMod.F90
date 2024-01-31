@@ -3033,8 +3033,8 @@ end subroutine SetMatrix_Snow
    dl = 26.7_r8  ! Will be read from file
    initdztile2(bounds%begg:bounds%endg) = 0.5_r8 ! Will be read from file
    dztile2 = 0.0_r8 !
-   A1=70.0_r8
-   A2=58.0_r8
+   A1=70.0_r8   ! Will be read from file
+   A2=58.0_r8   ! Will be read from file
    
    
    !write(iulog,*) 'columtiles', col%a_tile
@@ -3065,8 +3065,8 @@ end subroutine SetMatrix_Snow
             tl1zbot = zi(c1,j1) 
             tl2ztop = zi(c2,j2) - dz(c2,j2) + dztile2 !top of tile2 relative to tile1
             tl2zbot = zi(c2,j2) + dztile2    
-            write(iulog,*) 'height_tiles', j1, tl1ztop,tl1zbot,dztile2
-            write(iulog,*) 'low_tiles', j2, tl2ztop,tl2zbot
+            !write(iulog,*) 'height_tiles', j1, tl1ztop,tl1zbot,dztile2
+            !write(iulog,*) 'low_tiles', j2, tl2ztop,tl2zbot
             dzhhf = min(tl1zbot,tl2zbot)-max(tl1ztop,tl2ztop) !calculate thickness of overlaping part of layer j1 and j2
 
             if (dzhhf<0.0_r8) then !dzhhf will be negative if there is no interface, so flux should be zero. 
