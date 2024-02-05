@@ -295,11 +295,11 @@ contains
                   if (dztile2 >  SnowDepthTreshold) then
                   !Scale snow forcing.  Include different Tile Areas 
                   forc_snow_c(c1) = 0.0_r8
-                  forc_snow_c(c2) = forc_snow_c(c2) *2.0_r8 !* (A1/A2)
+                  forc_snow_c(c2) = forc_snow_c(c2) + forc_snow_c(c1)* (A1/A2)
                   !call endrun(subgrid_index=c, subgrid_level=subgrid_level_column, &
                   !msg=errMsg(sourcefile, __LINE__))
                    elseif (dztile2 < - SnowDepthTreshold) then
-                  forc_snow_c(c1) = forc_snow_c(c1)* 2.0_r8!  forc_snow_c(c1)*(A2/A1)
+                  forc_snow_c(c1) = forc_snow_c(c1) + forc_snow_c(c2)*(A2/A1)
                   forc_snow_c(c2) = 0.0_r8
                   !call endrun(subgrid_index=c, subgrid_level=subgrid_level_column, &
                   !msg=errMsg(sourcefile, __LINE__))
