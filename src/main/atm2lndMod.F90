@@ -132,7 +132,8 @@ contains
     type(wateratm2lndbulk_type) , intent(inout) :: wateratm2lndbulk_inst
     type(waterstatebulk_type)      ,  intent(inout) :: waterstatebulk_inst
     type(waterdiagnosticbulk_type) ,  intent(inout) :: waterdiagnosticbulk_inst
-    real(r8)           , intent(out)   :: eflx_sh_precip_conversion(bounds%begc:) ! sensible heat flux from precipitation conversion (W/m**2) [+ to atm]
+    real(r8)           , intent(out)   :: eflx_sh_precip_conversion(bounds%begc:) !
+    
     !
     ! !LOCAL VARIABLES:
     integer :: g, l, c, fc, c1, c2     ! indices
