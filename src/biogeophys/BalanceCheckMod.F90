@@ -723,9 +723,58 @@ contains
                - qflx_ice_runoff_grc(g)  &
                - qflx_snwcp_discarded_liq_grc(g)  &
                - qflx_snwcp_discarded_ice_grc(g)) * dtime
+
+
+       write(iulog,*)'nstep                     = ',nstep
+       write(iulog,*)'dtime                     = ',dtime
+       write(iulog,*)'gridcell                  = ',g
+       write(iulog,*)'errh2o_grc                = ',errh2o_grc(g)
+       write(iulog,*)'forc_rain                 = ',forc_rain_grc(g)*dtime
+       write(iulog,*)'forc_snow                 = ',forc_snow_grc(g)*dtime
+       write(iulog,*)'endwb_grc                 = ',endwb_grc(g)
+       write(iulog,*)'begwb_grc                 = ',begwb_grc(g)
+
+       write(iulog,*)'qflx_evap_tot             = ',qflx_evap_tot_grc(g)*dtime
+       write(iulog,*)'qflx_sfc_irrig            = ',qflx_sfc_irrig_grc(g)*dtime
+       write(iulog,*)'qflx_surf                 = ',qflx_surf_grc(g)*dtime
+       write(iulog,*)'qflx_qrgwl                = ',qflx_qrgwl_grc(g)*dtime
+       write(iulog,*)'qflx_drain                = ',qflx_drain_grc(g)*dtime
+       write(iulog,*)'qflx_ice_runoff           = ',qflx_ice_runoff_grc(g)*dtime
+       write(iulog,*)'qflx_snwcp_discarded_ice  = ',qflx_snwcp_discarded_ice_grc(g)*dtime
+       write(iulog,*)'qflx_snwcp_discarded_liq  = ',qflx_snwcp_discarded_liq_grc(g)*dtime
+       write(iulog,*)'deltawb                   = ',endwb_grc(g)-begwb_grc(g)
+       write(iulog,*)'deltawb/dtime             = ',(endwb_grc(g)-begwb_grc(g))/dtime
+       write(iulog,*)'qflx_drain_perched        = ',qflx_drain_perched_grc(g)*dtime
+       write(iulog,*)'forc_flood                = ',forc_flood_grc(g)*dtime
+       write(iulog,*)'qflx_glcice_dyn_water_flux = ',qflx_glcice_dyn_water_flux_grc(g)*dtime
+
        end do
 
        errh2o_max_val = maxval(abs(errh2o_grc(bounds%begg:bounds%endg)))
+
+       write(iulog,*)'nstep                     = ',nstep
+       write(iulog,*)'dtime                     = ',dtime
+       write(iulog,*)'gridcell                  = ',g
+       write(iulog,*)'errh2o_grc_max            = ',errh2o_max_val
+       write(iulog,*)'errh2o_grc                = ',errh2o_grc(g)
+       write(iulog,*)'forc_rain                 = ',forc_rain_grc(g)*dtime
+       write(iulog,*)'forc_snow                 = ',forc_snow_grc(g)*dtime
+       write(iulog,*)'endwb_grc                 = ',endwb_grc(g)
+       write(iulog,*)'begwb_grc                 = ',begwb_grc(g)
+
+       write(iulog,*)'qflx_evap_tot             = ',qflx_evap_tot_grc(g)*dtime
+       write(iulog,*)'qflx_sfc_irrig            = ',qflx_sfc_irrig_grc(g)*dtime
+       write(iulog,*)'qflx_surf                 = ',qflx_surf_grc(g)*dtime
+       write(iulog,*)'qflx_qrgwl                = ',qflx_qrgwl_grc(g)*dtime
+       write(iulog,*)'qflx_drain                = ',qflx_drain_grc(g)*dtime
+       write(iulog,*)'qflx_ice_runoff           = ',qflx_ice_runoff_grc(g)*dtime
+       write(iulog,*)'qflx_snwcp_discarded_ice  = ',qflx_snwcp_discarded_ice_grc(g)*dtime
+       write(iulog,*)'qflx_snwcp_discarded_liq  = ',qflx_snwcp_discarded_liq_grc(g)*dtime
+       write(iulog,*)'deltawb                   = ',endwb_grc(g)-begwb_grc(g)
+       write(iulog,*)'deltawb/dtime             = ',(endwb_grc(g)-begwb_grc(g))/dtime
+       write(iulog,*)'qflx_drain_perched        = ',qflx_drain_perched_grc(g)*dtime
+       write(iulog,*)'forc_flood                = ',forc_flood_grc(g)*dtime
+       write(iulog,*)'qflx_glcice_dyn_water_flux = ',qflx_glcice_dyn_water_flux_grc(g)*dtime
 
        ! BUG(rgk, 2021-04-13, ESCOMP/CTSM#1314) Temporarily bypassing gridcell-level check with use_fates_planthydro until issue 1314 is resolved
        
