@@ -1658,6 +1658,8 @@ contains
      use LandunitType     , only : lun         !KSA     
      use ColumnType       , only : col         !KSA
      use landunit_varcon  , only : istsoil     !KSA
+     use clm_instur       , only : exice_tile_mask, a_tile1, a_tile2, tile_dist, tile_ctl, tile_hightdiff
+     use clm_varctl       , only : use_excess_ice_tiles, use_tiles_lateral_water
 
      !
      ! !ARGUMENTS:
@@ -1674,6 +1676,7 @@ contains
      character(len=32) :: subname = 'PerchedLateralFlow' ! subroutine name
      integer  :: c,j,fc,i,c1,c2,g, c_src,c_dst,l         ! indices    KSA
      real(r8) :: A1, A2                                  ! Areas of representative permafrost tiles [m] KSA
+     real(r8) ::A_src, A_drc                             ! Area of the source and recieving tile for water flow
      real(r8) :: dtime                                   ! land model time step (sec)
      real(r8) :: wtsub                                   ! summation of hk*dzmm for layers below water table (mm**2/s)
      real(r8) :: h2osoi_vol
@@ -1717,104 +1720,106 @@ contains
           exice_subs_tot_acc =>    waterdiagnosticbulk_inst%exice_subs_tot_acc  & ! Input: [real(r8) (:) ]  subsidence due to excess ice melt (m)   KSA
           )
           
-       initdztile2(bounds%begg:bounds%endg) = 0.5_r8 ! Will be read from file  KSA
-       dx = 2.0_r8   ! Will be read from file        ! KSA
-       dl = 10.0_r8  ! Will be read from file        ! KSA
-       A1 = 10.0_r8  ! Will be read from file        ! KSA
-       A2 = 10.0_r8  ! Will be read from file        ! KSA
+       initdztile2(bounds%begg:bounds%endg) = tile_hightdiff(bounds%begg:bounds%endg) !  KSA
        ! Get time step
 
        dtime = get_step_size_real()
-
        ! locate frost table and perched water table
        do fc = 1, num_hydrologyc
-          c = filter_hydrologyc(fc)
-          k_frost(c) = nbedrock(c)
-          k_perch(c) = nbedrock(c)
-          do k = 1, nbedrock(c)
-             if (frost_table(c) >= zi(c,k-1) .and. frost_table(c) < zi(c,k)) then
-                k_frost(c) = k
-                exit
-             endif
-          enddo
-
-          do k = 1, nbedrock(c)
-             if (zwt_perched(c) >= zi(c,k-1) .and. zwt_perched(c) < zi(c,k)) then
-                k_perch(c) = k
-                exit
-             endif
-          enddo
-       enddo
-
-       ! compute drainage from perched saturated region
-       do fc = 1, num_hydrologyc
          c = filter_hydrologyc(fc)
-          
+         k_frost(c) = nbedrock(c)
+         k_perch(c) = nbedrock(c)
+         do k = 1, nbedrock(c)
+            if (frost_table(c) >= zi(c,k-1) .and. frost_table(c) < zi(c,k)) then
+               k_frost(c) = k
+               exit
+            endif
+         enddo
+
+         do k = 1, nbedrock(c)
+            if (zwt_perched(c) >= zi(c,k-1) .and. zwt_perched(c) < zi(c,k)) then
+               k_perch(c) = k
+               exit
+            endif
+         enddo
+      enddo
+
+      ! compute drainage from perched saturated region
+      do fc = 1, num_hydrologyc
+         c = filter_hydrologyc(fc)
+         
          qflx_drain_perched(c) = 0._r8
          if (frost_table(c) > zwt_perched(c)) then
             l = col%landunit(c)               
-            g = col%gridcell(c)                
-           !if (lun%itype(col%landunit(c)) == istsoil .and. lun%ncolumns(l) == 2) then   
-           if ( 0 == 1 ) then   
-           ! if (lun%ncolumns(l) == 2) then   
-              c1=lun%coli(l)                  
-              c2=lun%colf(l)                
-              dztile2 = (initdztile2(g) + exice_subs_tot_acc(c2)) - exice_subs_tot_acc(c1) !check signs EB
-               
-             ! Calculate head gradient: is the water table height difference divided by the distance between tiles--> deltaH/deltaX KSA
-              head_gradient = (zwt_perched(c1)-(zwt_perched(c2)+dztile2)) / dx ! Check signes
+            g = col%gridcell(c)    
+            if ( use_excess_ice_tiles .and. use_tiles_lateral_water) then    
+               dx = tile_dist(g)
+               dl = tile_ctl(g) 
+               A1=a_tile1(g) 
+               A2=a_tile2(g)
+               if (lun%itype(col%landunit(c)) == istsoil .and.lun%ncolumns(l) == 2 .and. exice_tile_mask(g) == 1) then  
+                  c1=lun%coli(l)                  
+                  c2=lun%colf(l)                
+                  dztile2 = (initdztile2(g) + exice_subs_tot_acc(c2)) - exice_subs_tot_acc(c1)
 
-            ! Calculate transmisivity = overlapping height of the highest perched water table 
-              transmis = 0._r8
-             ! if head gradient is positive--> water table of c1 is deeper and c2 is src, if negative--> water table in c2 is deeper
+                  ! Calculate head gradient: is the water table height difference divided by the distance between tiles--> deltaH/deltaX KSA
+                  head_gradient = (zwt_perched(c1)-(zwt_perched(c2)+dztile2)) / dx 
+                  ! Calculate transmisivity = overlapping height of the highest perched water table 
+                  transmis = 0._r8
+                  ! if head gradient is positive--> water table of c1 is deeper and c2 is src, if negative--> water table in c2 is deeper
 
-              if (head_gradient>=0._r8) then
-                 c_dst=c1
-                 c_src=c2
-                 diff=-dztile2    !diff is what must be added to the source to make it equal to the destination depth
-              else
-                 c_dst=c2
-                 c_src=c1
-         !-------------------------------------------------------------------KSA
-                  diff=dztile2
-               endif
-               ! if k_perch equals k_frost, no perched saturated zone exists in the source tile
-               if(k_perch(c_src) < k_frost(c_src)) then
-                  do k = k_perch(c_src), k_frost(c_src)-1
-                     if(k == k_perch(c_src)) then !we must take the right depth of the layer k, maybe table is not the whole layer thickness
-                        transmis = transmis + 1.e-3_r8*hksat(c_src,k)*(zi(c_src,k) - zwt_perched(c_src))
-                     else
+                  if (head_gradient>=0._r8) then
+                     c_dst=c1
+                     c_src=c2
+                     A_src= A2
+                     A_drc= A1
+                     diff=-dztile2    !diff is what must be added to the source to make it equal to the destination depth
+                  else
+                     c_dst=c2
+                     c_src=c1
+                     A_src=A1
+                     A_drc=A2
+                     !-------------------------------------------------------------------KSA
+                     diff=dztile2
+                  endif
+                  ! if k_perch equals k_frost, no perched saturated zone exists in the source tile
+                  if(k_perch(c_src) < k_frost(c_src)) then
+                     do k = k_perch(c_src), k_frost(c_src)-1
+                        if(k == k_perch(c_src)) then !we must take the right depth of the layer k, maybe table is not the whole layer thickness
+                         transmis = transmis + 1.e-3_r8*hksat(c_src,k)*(zi(c_src,k) - zwt_perched(c_src))
+                        else
                         if (z(c_src,k)+diff < frost_table(c_dst)) then !the source depth must be smaller than the frost table depth of the destination 
                            transmis = transmis + 1.e-3_r8*hksat(c_src,k)*dz(c_src,k)
                         endif
-                     endif
-                     !write(iulog,*) "TRANSMISS: c",c,"c1",c1,"c2",c2,"transmis",transmis,'z(c_src,k)',z(c_src,k),'diff',diff,'k',k,k_perch(c_src),k_frost(c_src)
-                  enddo
-               endif
-               if (c==c_dst) then
-                  qflx_drain_perched(c)=-abs(1.e3_r8*(transmis*dl*head_gradient/10._r8)) !10 must be replaced by area of c_dst
+                        endif
+                        !write(iulog,*) "TRANSMISS: c",c,"c1",c1,"c2",c2,"transmis",transmis,'z(c_src,k)',z(c_src,k),'diff',diff,'k',k,k_perch(c_src),k_frost(c_src)
+                     enddo
+                   endif
+                  if (c==c_dst) then
+                      qflx_drain_perched(c)=-abs(1.e3_r8*(transmis*dl*head_gradient/A_drc)) !10 must be replaced by area of c_dst
+                  else
+                     qflx_drain_perched(c)=abs(1.e3_r8*(transmis*dl*head_gradient/A_src)) !10 must be replaced by area of c_src
+                  endif
                else
-                  qflx_drain_perched(c)=abs(1.e3_r8*(transmis*dl*head_gradient/10._r8)) !10 must be replaced by area of c_src
-               endif
-            else
-            !------------------------------------------------------------------KSA
-                ! specify maximum drainage rate
-                q_perch_max = params_inst%perched_baseflow_scalar &
-                     * sin(col%topo_slope(c) * (rpi/180._r8))
-
-               wtsub = 0._r8
-               q_perch = 0._r8
-               do k = k_perch(c), k_frost(c)-1
-                  q_perch = q_perch + hksat(c,k)*dz(c,k)
-                  wtsub = wtsub + dz(c,k)
-               end do
-               if (wtsub > 0._r8) q_perch = q_perch/wtsub
-            
-               qflx_drain_perched(c) = q_perch_max * q_perch &
+                    !------------------------------------------------------------------KSA
+                   ! specify maximum drainage rate
+                   q_perch_max = params_inst%perched_baseflow_scalar &
+                    * sin(col%topo_slope(c) * (rpi/180._r8))
+                   wtsub = 0._r8
+                  q_perch = 0._r8
+                  do k = k_perch(c), k_frost(c)-1
+                     q_perch = q_perch + hksat(c,k)*dz(c,k)
+                     wtsub = wtsub + dz(c,k)
+                  end do
+                  if (wtsub > 0._r8) then
+                     q_perch = q_perch/wtsub
+                     qflx_drain_perched(c) = q_perch_max * q_perch &
                      *(frost_table(c) - zwt_perched(c))
+                  endif
+               endif 
             endif
-         endif
-       enddo
+          endif 
+        enddo
              
        ! remove drainage from soil moisture storage
        do fc = 1, num_hydrologyc
