@@ -64,4 +64,6 @@ module clm_instur
   
   real(r8), pointer :: tile_ctl(:)
 
+  real(r8), pointer :: tile_hightdiff(:)
+
 end module clm_instur

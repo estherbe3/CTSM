@@ -123,7 +123,7 @@ contains
     use WaterDiagnosticBulkType  , only : waterdiagnosticbulk_type
     use clm_varctl               , only : use_excess_ice_tiles, use_tiles_snow
     use landunit_varcon          , only : istsoil
-    use clm_instur               , only : exice_tile_mask
+    use clm_instur               , only : exice_tile_mask, a_tile1, a_tile2, tile_hightdiff
     !
     ! !ARGUMENTS:
     type(bounds_type)  , intent(in)    :: bounds  
@@ -187,7 +187,7 @@ contains
          snow_depth   => waterdiagnosticbulk_inst%snow_depth_col        , & ! Input: [real(r8) (:)   ] snow height (m)  
          exice_subs_tot_acc   =>    waterdiagnosticbulk_inst%exice_subs_tot_acc  & ! Input: [real(r8) (:) ]  subsidence due to excess ice melt (m)   
          )
-      initdztile2(bounds%begg:bounds%endg) = 0.5_r8 ! Will be read from file
+      initdztile2(bounds%begg:bounds%endg) =  tile_hightdiff(bounds%begg:bounds%endg)
 
       ! Initialize column forcing (needs to be done for ALL active columns)
       do c = bounds%begc,bounds%endc
@@ -285,8 +285,8 @@ contains
             if (lun%ncolumns(l) == 2 .and. exice_tile_mask(g) == 1) then
                c1=lun%coli(l)
                c2=lun%colf(l)
-               A1=70.0_r8
-               A2=58.0_r8 
+               A1=a_tile1(g)
+               A2=a_tile2(g)
                !A1=col%a_tile(c1)     !read geometry of files
                !A2=col%a_tile(c2)
                dztile2 = (initdztile2(g) + exice_subs_tot_acc(c2) - snow_depth(c2)) - &

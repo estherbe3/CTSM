@@ -999,7 +999,7 @@ contains
   !
   !
   use clm_varctl, only : use_excess_ice_tiles
-  use clm_instur, only : exice_tile_mask, a_tile1, a_tile2, tile_dist, tile_ctl
+  use clm_instur, only : exice_tile_mask, a_tile1, a_tile2, tile_dist, tile_ctl, tile_hightdiff
   use clm_instur, only : wt_lunit
   use landunit_varcon, only: istice
 
@@ -1044,7 +1044,7 @@ contains
       allocate(arrayTile(begg:endg))
       call ncd_io(ncid=ncid, varname='AREA_TILE1', flag='read', data=arrayTile, dim1name=grlnd, readvar=readvar)
       if (.not. readvar) then 
-         write(iulog,*) (' Warning: AREA_TILE1 NOT on surfdata file')
+         write(iulog,*) (' Warning: AREA_TILE1 not on surfdata file')
          a_tile1(begg:endg)=70.0
       else 
          a_tile1(begg:endg)= arrayTile(begg:endg)
@@ -1054,7 +1054,7 @@ contains
       allocate(arrayTile(begg:endg))
       call ncd_io(ncid=ncid, varname='AREA_TILE2', flag='read', data=arrayTile, dim1name=grlnd, readvar=readvar)
       if (.not. readvar) then 
-         write(iulog,*) (' Warning: AREA_TILE2 NOT on surfdata file')
+         write(iulog,*) (' Warning: AREA_TILE2 not on surfdata file')
          a_tile2(begg:endg)=58.0
       else 
          a_tile2(begg:endg)=arrayTile(begg:endg)
@@ -1064,7 +1064,7 @@ contains
       allocate(arrayTile(begg:endg))
       call ncd_io(ncid=ncid, varname='TILE_DIST', flag='read', data=arrayTile, dim1name=grlnd, readvar=readvar)
       if (.not. readvar) then
-        write(iulog,*) (' Warning:Tile_distance non surfdata file')
+        write(iulog,*) (' Warning:Tile_distance not on surfdata file')
          tile_dist(begg:endg)=2.1
       else
          tile_dist(begg:endg) = arrayTile(begg:endg)
@@ -1074,12 +1074,25 @@ contains
       allocate(arrayTile(begg:endg))
       call ncd_io(ncid=ncid, varname='TILE_CTL', flag='read', data=arrayTile, dim1name=grlnd, readvar=readvar)
       if (.not. readvar) then
-        write(iulog,*) (' Warning: Tile_ctl (contact length) non surfdata file')
+        write(iulog,*) (' Warning: Tile_ctl (contact length) not on surfdata file')
         tile_ctl(begg:endg)=27.1
       else
       tile_ctl(begg:endg)=arrayTile(begg:endg)
       end if
       deallocate(arrayTile)
+
+      allocate(arrayTile(begg:endg))
+      call ncd_io(ncid=ncid, varname='TILE_HIGHTDIFF', flag='read', data=arrayTile, dim1name=grlnd, readvar=readvar)
+      if (.not. readvar) then
+        write(iulog,*) (' Warning: Tile_hight difference not on surfdata file')
+        tile_hightdiff(begg:endg)=0.5
+      else
+      tile_hightdiff(begg:endg)=arrayTile(begg:endg)
+      end if
+      deallocate(arrayTile)
+
+
+
 
     endif
 

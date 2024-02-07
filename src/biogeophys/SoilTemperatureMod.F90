@@ -2983,6 +2983,7 @@ end subroutine SetMatrix_Snow
    use LandunitType    , only : lun
    use abortutils      , only : endrun
    use shr_log_mod     , only : errMsg => shr_log_errMsg
+   use clm_instur      , only : exice_tile_mask, a_tile1, a_tile2, tile_dist, tile_ctl, tile_hightdiff
 
    implicit none
    ! ARGUMENTS:
@@ -3027,23 +3028,20 @@ end subroutine SetMatrix_Snow
       eflx_lateral_col => energyflux_inst%eflx_lateral_col &  ! Output: [real(r8) (:) ]  lateral heat flux into column [W/m2]
    )
 
- ! if ( 0 == 1 ) then
-
-   dx = 2.1_r8   ! Will be read from file
-   dl = 26.7_r8  ! Will be read from file
-   initdztile2(bounds%begg:bounds%endg) = 0.5_r8 ! Will be read from file
-   dztile2 = 0.0_r8 !
-   A1=70.0_r8   ! Will be read from file
-   A2=58.0_r8   ! Will be read from file
-   
+   initdztile2(bounds%begg:bounds%endg) = tile_hightdiff(bounds%begg:bounds%endg)! Will be read from file
    
    !write(iulog,*) 'columtiles', col%a_tile
 
    do g = bounds%begg,bounds%endg
       l = grc%landunit_indices(istsoil,g)            
-      if (lun%ncolumns(l) == 2) then  ! maybe (if Tiling mask=1)?
+      if (lun%ncolumns(l) == 2 .and. exice_tile_mask(g) == 1) then
+         A1=a_tile1(g)
+         A2=a_tile2(g)
+         dx = tile_dist(g)  ! Will be read from file
+         dl = tile_ctl(g)
          c1=lun%coli(l)
          c2=lun%colf(l)
+         dztile2 = 0.0_r8 !
 
          !Update elevation of tile2 relative to tile1
          dztile2 = initdztile2(g) + exice_subs_tot_acc(c2) - exice_subs_tot_acc(c1)                
