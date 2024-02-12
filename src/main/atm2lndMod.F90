@@ -289,8 +289,10 @@ contains
                A2=a_tile2(g)
                !A1=col%a_tile(c1)     !read geometry of files
                !A2=col%a_tile(c2)
-               dztile2 = (initdztile2(g) + exice_subs_tot_acc(c2) - snow_depth(c2)) - &
-                      (-exice_subs_tot_acc(c1) - snow_depth(c1))!    
+               !dztile2 = (initdztile2(g) + exice_subs_tot_acc(c2) - snow_depth(c2)) - &
+                    !  (-exice_subs_tot_acc(c1) - snow_depth(c1))!   
+                dztile2 = (initdztile2(g)+ snow_depth(c1) - exice_subs_tot_acc(c1)) -&
+                     (snow_depth(c2)- exice_subs_tot_acc(c2)) 
                   if (dztile2 >  SnowDepthTreshold) then
                   !Scale snow forcing.  Include different Tile Areas 
                   forc_snow_c(c1) = 0.0_r8

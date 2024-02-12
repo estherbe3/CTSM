@@ -207,7 +207,7 @@ contains
     use clm_instur, only : wt_lunit, wt_nat_patch
     use subgridMod, only : subgrid_get_info_natveg, natveg_patch_exists
     use clm_varpar, only : natpft_lb, natpft_ub, natpft_size
-    use clm_instur      , only : exice_tile_mask
+    use clm_instur, only : exice_tile_mask
     !
     ! !ARGUMENTS:
     integer , intent(in)    :: ltype             ! landunit type
