@@ -207,7 +207,7 @@ contains
     use clm_instur, only : wt_lunit, wt_nat_patch
     use subgridMod, only : subgrid_get_info_natveg, natveg_patch_exists
     use clm_varpar, only : natpft_lb, natpft_ub, natpft_size
-    use clm_instur, only : exice_tile_mask
+    use clm_instur, only : exice_tile_mask, a_tile1, a_tile2
     !
     ! !ARGUMENTS:
     integer , intent(in)    :: ltype             ! landunit type
@@ -227,6 +227,7 @@ contains
     integer  :: nlunits_added                    ! number of landunits actually added
     real(r8) :: wtlunit2gcell                    ! landunit weight in gridcell
     real(r8) :: p_wt                             ! patch weight (0-1)
+    real(r8) :: scal                             ! scalling factor for excess ice tiles
     !------------------------------------------------------------------------
 
     ! Set decomposition properties
@@ -245,7 +246,11 @@ contains
        do lci = 1,ncols
           ! Assume one column on the landunit
           if (exice_tile_mask(gi) == 1) then
-             call add_column(ci=ci, li=li, ctype=1, wtlunit=0.5_r8)
+            if (lci==1) then
+             call add_column(ci=ci, li=li, ctype=1, wtlunit=a_tile1(gi)/(a_tile1(gi)+ a_tile2(gi)))
+            else
+             call add_column(ci=ci, li=li, ctype=1, wtlunit=a_tile2(gi)/(a_tile1(gi)+ a_tile2(gi)))
+            endif
           else
              call add_column(ci=ci, li=li, ctype=1, wtlunit=1.0_r8)
           end if
