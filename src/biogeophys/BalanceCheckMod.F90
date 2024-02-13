@@ -709,25 +709,7 @@ contains
          c2l_scale_type= 'urbanf', l2g_scale_type='unity' )
 
        do g = bounds%begg, bounds%endg
-         if (exice_tile_mask(g)==1) then 
-            write(iulog, *) "gridcell index: ", g 
-         
-            errh2o_grc(g) = endwb_grc(g) - begwb_grc(g)  &
-            - (forc_rain_grc(g)  &
-            + forc_snow_grc(g)  &
-            + forc_flood_grc(g)  &
-            + qflx_sfc_irrig_grc(g)  &
-            + qflx_glcice_dyn_water_flux_grc(g)  &
-            - qflx_evap_tot_grc(g)  &
-            - qflx_surf_grc(g)  &
-            - qflx_qrgwl_grc(g)  &
-            - qflx_drain_grc(g)  &
-            - qflx_drain_perched_grc(g)  &
-            - qflx_ice_runoff_grc(g)  &
-            - qflx_snwcp_discarded_liq_grc(g)  &
-            - qflx_snwcp_discarded_ice_grc(g)) * dtime
-
-         else 
+        
           errh2o_grc(g) = endwb_grc(g) - begwb_grc(g)  &
                - (forc_rain_grc(g)  &
                + forc_snow_grc(g)  &
@@ -742,7 +724,6 @@ contains
                - qflx_ice_runoff_grc(g)  &
                - qflx_snwcp_discarded_liq_grc(g)  &
                - qflx_snwcp_discarded_ice_grc(g)) * dtime
-         endif
        end do
 
        errh2o_max_val = maxval(abs(errh2o_grc(bounds%begg:bounds%endg)))
@@ -755,8 +736,7 @@ contains
           write(iulog,*)'WARNING:  grid cell-level water balance error ',&
              ' nstep= ',nstep, &
              ' local indexg= ',indexg,&
-             ' errh2o_grc= ',errh2o_grc(indexg)
-         write(iulog, *) "gridcell index: ", g     
+             ' errh2o_grc= ',errh2o_grc(indexg)  
           if (errh2o_max_val > error_thresh .and. DAnstep > skip_steps .and. &
               .not. use_soil_moisture_streams .and. &
               .not. get_for_testing_zero_dynbal_fluxes()) then

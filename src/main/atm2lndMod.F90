@@ -294,19 +294,14 @@ contains
                 dztile2 = (initdztile2(g)+ snow_depth(c1) - exice_subs_tot_acc(c1)) -&
                      (snow_depth(c2)- exice_subs_tot_acc(c2)) 
                   if (dztile2 >  SnowDepthTreshold) then
-                  Write(iulog, *) "Forcing before redistribution: ", forc_snow_c(c2)
                   !Scale snow forcing.  Include different Tile Areas 
                   forc_snow_c(c2) = forc_snow_c(c2) + forc_snow_c(c1)* (A1/A2)
                   forc_snow_c(c1) = 0.0_r8
-                  
-                  Write(iulog, *) "Forcing after redistribution: ", forc_snow_c(c2)
                   !call endrun(subgrid_index=c, subgrid_level=subgrid_level_column, &
                   !msg=errMsg(sourcefile, __LINE__))
                    elseif (dztile2 < - SnowDepthTreshold) then
-                     Write(iulog, *) "Forcing before redistribution: ", forc_snow_c(c1)
                   forc_snow_c(c1) = forc_snow_c(c1) + forc_snow_c(c1)*(A2/A1)
                   forc_snow_c(c2) = 0.0_r8
-                  Write(iulog, *) "Forcing after redistribution: ", forc_snow_c(c1)
                   !call endrun(subgrid_index=c, subgrid_level=subgrid_level_column, &
                   !msg=errMsg(sourcefile, __LINE__))
                endif
