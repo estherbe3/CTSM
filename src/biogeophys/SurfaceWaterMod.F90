@@ -38,6 +38,8 @@ module SurfaceWaterMod
   private :: BulkDiag_FracH2oSfc          ! Determine fraction of land surfaces which are submerged
   private :: QflxH2osfcSurf      ! Compute qflx_h2osfc_surf
   private :: QflxH2osfcDrain     ! Compute qflx_h2osfc_drain
+  !private :: Lateral_SurfaceWater_Dis ! compute surface water flux between two tiles
+
   type, private :: params_type
      real(r8) :: pc              ! Threshold probability for surface water (unitless)
      real(r8) :: mu              ! Connectivity exponent for surface water (unitless)
@@ -349,6 +351,8 @@ contains
     !
     ! !DESCRIPTION:
     ! Calculate fluxes out of h2osfc and update the h2osfc state
+   
+   use clm_varctl               , only : iulog, use_excess_ice, use_excess_ice_tiles, use_tiles_lateral_water
     !
     ! !ARGUMENTS:
     type(bounds_type)        , intent(in)    :: bounds               
@@ -391,6 +395,11 @@ contains
          frac_h2osfc_nosnow = frac_h2osfc_nosnow(bounds%begc:bounds%endc), &
          topo_slope = col%topo_slope(bounds%begc:bounds%endc), &
          qflx_h2osfc_surf = qflx_h2osfc_surf(bounds%begc:bounds%endc))
+   
+   !if (use_excess_ice_tiles .and. use_tiles_lateral_water) then 
+   ! call LateralHeatFlux(dtime, bounds, num_nolakec, filter_nolakec, cv, &
+    !temperature_inst, waterdiagnosticbulk_inst, soilstate_inst, energyflux_inst)
+   !endif
 
     ! Update h2osfc prior to calculating bottom drainage from h2osfc.
     !
@@ -400,6 +409,8 @@ contains
     do fc = 1, num_hydrologyc
        c = filter_hydrologyc(fc)
        h2osfc_partial(c) = h2osfc(c) + (qflx_in_h2osfc(c) - qflx_h2osfc_surf(c)) * dtime
+       !if if (use_excess_ice_tiles .and. use_tiles_lateral_water) then 
+       !h2osfc_partial(c) = h2osfc(c) + qflx_lat * dtime
     end do
 
     call truncate_small_values(num_f = num_hydrologyc, filter_f = filter_hydrologyc, &
@@ -549,5 +560,78 @@ contains
     end do
 
   end subroutine QflxH2osfcDrain
+
+
+ subroutine Lateral_SurfaceWater_Dis (bounds, num_hydrologyc, filter_hydrologyc, &
+   h2osfcflag, h2osfc, h2osfc_thresh, frac_h2osfc_nosnow, topo_slope, qflx_h2osfc_surf)
+ 
+   use clm_varpar      , only : nlevsno, nlevsoi, nlevmaxurbgrnd
+   use clm_varcon      , only : denice, tfrz 
+   use landunit_varcon , only : istsoil
+   use column_varcon   , only : icol_roof, icol_sunwall, icol_shadewall, icol_road_perv, icol_road_imperv
+   use clm_varctl      , only : iulog
+   use GridcellType    , only : grc
+   use LandunitType    , only : lun
+   use abortutils      , only : endrun
+   use shr_log_mod     , only : errMsg => shr_log_errMsg
+   use clm_instur      , only : exice_tile_mask, a_tile1, a_tile2, tile_dist, tile_ctl, tile_hightdiff
+
+ ! ARGUMENTS:
+   type(bounds_type) , intent(in)    :: bounds
+   integer           , intent(in)    :: num_hydrologyc                     ! number of column soil points in column filter
+   integer           , intent(in)    :: filter_hydrologyc(:)               ! column filter for soil points
+   integer           , intent(in)    :: h2osfcflag                         ! true => surface water is active
+   real(r8)          , intent(in)    :: h2osfc( bounds%begc: )             ! surface water (mm)
+   real(r8)          , intent(in)    :: h2osfc_thresh( bounds%begc: )      ! level at which h2osfc "percolates"
+
+
+ !LOCAL VARIABLES:
+   integer  :: l,c,j,g                   ! indices
+   integer  :: c1,c2                     ! indeces for tile columns
+   integer  :: fc                        ! lake filtered column indices   
+   real(r8) :: dx,dl                     ! tile geometry parameters  [m]
+   real(r8) :: deltaz                    ! difference in heigt between tiles [m]
+   real(r8) :: A1, A2                    ! Areas of tiles 
+   real(r8) :: dztile2                   ! Elevation difference between top of tile 2 compared to tile 1
+   real(r8) :: initdztile2(bounds%begg:bounds%endg)              ! Initial elevation difference between top of tile 2 compared to tile 1
+
+
+   SHR_ASSERT_ALL_FL((ubound(h2osfc) == (/bounds%endc/)), sourcefile, __LINE__)
+   SHR_ASSERT_ALL_FL((ubound(h2osfc_thresh) == (/bounds%endc/)), sourcefile, __LINE__)
+   SHR_ASSERT_ALL_FL((ubound(frac_h2osfc_nosnow) == (/bounds%endc/)), sourcefile, __LINE__)
+   SHR_ASSERT_ALL_FL((ubound(topo_slope) == (/bounds%endc/)), sourcefile, __LINE__)
+   SHR_ASSERT_ALL_FL((ubound(qflx_h2osfc_surf) == (/bounds%endc/)), sourcefile, __LINE__)
+
+
+   initdztile2(bounds%begg:bounds%endg) = tile_hightdiff(bounds%begg:bounds%endg)! Will be read from file
+   
+   do g = bounds%begg,bounds%endg
+      l = grc%landunit_indices(istsoil,g) 
+      fc = 1, num_hydrologyc
+      c = filter_hydrologyc(fc)  
+    if (lun%ncolumns(l) == 2 .and. exice_tile_mask(g) == 1 and h2osfcflag==1) then
+      A1=a_tile1(g)
+      A2=a_tile2(g)
+      dx = tile_dist(g)  
+      dl = tile_ctl(g)
+      c1=lun%coli(l)
+      c2=lun%colf(l)
+      dztile2 = initdztile2(g) + exice_subs_tot_acc(c2) - exice_subs_tot_acc(c1)
+      
+      if (dztile2>0) then  ! Tile1 is higher than Tile 2
+      
+      h2osfc
+      elseif (dztile2<0 ) then 
+      
+      else
+      
+      endif 
+      
+    endif
+   enddo
+
+
+
+end subroutine Lateral_SurfaceWater_Dis
 
 end module SurfaceWaterMod

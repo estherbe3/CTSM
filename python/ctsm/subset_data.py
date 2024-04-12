@@ -551,7 +551,7 @@ def subset_point(args, file_dict: dict):
         create_datm=args.create_datm,
         create_user_mods=args.create_user_mods,
         dom_pft=args.dom_pft,
-        evenly_split_cropland=args.evenly_split_cropland,
+        evenly_split_cropland=False,
         pct_pft=args.pct_pft,
         num_pft=num_pft,
         include_nonveg=args.include_nonveg,

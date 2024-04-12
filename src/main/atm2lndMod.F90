@@ -287,6 +287,8 @@ contains
                c2=lun%colf(l)
                A1=a_tile1(g)
                A2=a_tile2(g)
+               write(iulog, *) "AREA Tile1", A1, a_tile1
+               write(iulog, *) "AREA TILE2", A2, a_tile2 (g)
                !A1=col%a_tile(c1)     !read geometry of files
                !A2=col%a_tile(c2)
                !dztile2 = (initdztile2(g) + exice_subs_tot_acc(c2) - snow_depth(c2)) - &
