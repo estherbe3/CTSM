@@ -589,7 +589,6 @@ contains
    integer  :: l,c,j,g                   ! indices
    integer  :: c1,c2                     ! indeces for tile columns
    integer  :: fc                        ! lake filtered column indices   
-   real(r8) :: dx,dl                     ! tile geometry parameters  [m]
    real(r8) :: deltaz                    ! difference in heigt between tiles [m]
    real(r8) :: A1, A2                    ! Areas of tiles 
    real(r8) :: dztile2                   ! Elevation difference between top of tile 2 compared to tile 1
@@ -612,17 +611,17 @@ contains
     if (lun%ncolumns(l) == 2 .and. exice_tile_mask(g) == 1 and h2osfcflag==1) then
       A1=a_tile1(g)
       A2=a_tile2(g)
-      dx = tile_dist(g)  
-      dl = tile_ctl(g)
       c1=lun%coli(l)
       c2=lun%colf(l)
       dztile2 = initdztile2(g) + exice_subs_tot_acc(c2) - exice_subs_tot_acc(c1)
       
       if (dztile2>0) then  ! Tile1 is higher than Tile 2
       
-      h2osfc
+         h2osfc(c2)=h2osfc(c2)+ h2osfc(c1)* (A1/A2)
+         h2osfc(c1)= 0
       elseif (dztile2<0 ) then 
-      
+         h2osfc(c1)=h2osfc(c1)+ h2osfc(c2)* (A2/A1)
+         h2osfc(c2)= 0
       else
       
       endif 
