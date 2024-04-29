@@ -139,6 +139,7 @@ contains
     allocate(this%qflx_snomelt_lyr_col     (begc:endc,-nlevsno+1:0)) ; this%qflx_snomelt_lyr_col     (:,:) = nan
     allocate(this%qflx_deficit_col         (begc:endc))              ; this%qflx_deficit_col         (:)   = nan
     allocate(this%AnnET                    (begc:endc))              ; this%AnnET                    (:)   = nan
+    allocate(this%qflx_lat_h2osfc_surf_col (begc:endc))         ; this%qflx_lat_h2osfc_surf_col     (:)   = nan
 
 
   end subroutine InitBulkAllocate
