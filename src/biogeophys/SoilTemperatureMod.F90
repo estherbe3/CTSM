@@ -3028,13 +3028,14 @@ end subroutine SetMatrix_Snow
       eflx_lateral_col => energyflux_inst%eflx_lateral_col &  ! Output: [real(r8) (:) ]  lateral heat flux into column [W/m2]
    )
 
-   initdztile2(bounds%begg:bounds%endg) = tile_hightdiff(bounds%begg:bounds%endg)! Will be read from file
+ 
    
    !write(iulog,*) 'columtiles', col%a_tile
 
    do g = bounds%begg,bounds%endg
       l = grc%landunit_indices(istsoil,g)            
       if (lun%ncolumns(l) == 2 .and. exice_tile_mask(g) == 1) then
+         initdztile2(bounds%begg:bounds%endg) = tile_hightdiff(bounds%begg:bounds%endg)! Will be read from file
          A1=a_tile1(g)
          A2=a_tile2(g)
          dx = tile_dist(g)  ! Will be read from file

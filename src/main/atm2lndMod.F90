@@ -187,7 +187,7 @@ contains
          snow_depth   => waterdiagnosticbulk_inst%snow_depth_col        , & ! Input: [real(r8) (:)   ] snow height (m)  
          exice_subs_tot_acc   =>    waterdiagnosticbulk_inst%exice_subs_tot_acc  & ! Input: [real(r8) (:) ]  subsidence due to excess ice melt (m)   
          )
-      initdztile2(bounds%begg:bounds%endg) =  tile_hightdiff(bounds%begg:bounds%endg)
+
 
       ! Initialize column forcing (needs to be done for ALL active columns)
       do c = bounds%begc,bounds%endc
@@ -280,6 +280,7 @@ contains
      !Horizontal snow redistribution based on excess ice and snow 
       SnowDepthTreshold = 0.05_r8
       if ( use_excess_ice_tiles .and. use_tiles_snow) then 
+         initdztile2(bounds%begg:bounds%endg) =  tile_hightdiff(bounds%begg:bounds%endg)
          do g = bounds%begg,bounds%endg
             l = grc%landunit_indices(istsoil,g)   
             if (lun%ncolumns(l) == 2 .and. exice_tile_mask(g) == 1) then

@@ -1720,7 +1720,6 @@ contains
           exice_subs_tot_acc =>    waterdiagnosticbulk_inst%exice_subs_tot_acc  & ! Input: [real(r8) (:) ]  subsidence due to excess ice melt (m)   KSA
           )
           
-       initdztile2(bounds%begg:bounds%endg) = tile_hightdiff(bounds%begg:bounds%endg) !  KSA
        ! Get time step
 
        dtime = get_step_size_real()
@@ -1752,7 +1751,8 @@ contains
          if (frost_table(c) > zwt_perched(c)) then
             l = col%landunit(c)               
             g = col%gridcell(c)    
-            if ( use_excess_ice_tiles .and. use_tiles_lateral_water) then    
+            if ( use_excess_ice_tiles .and. use_tiles_lateral_water) then   
+               initdztile2(bounds%begg:bounds%endg) = tile_hightdiff(bounds%begg:bounds%endg) !  KSA 
                dx = tile_dist(g)
                dl = tile_ctl(g) 
                A1=a_tile1(g) 
