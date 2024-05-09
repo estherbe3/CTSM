@@ -472,7 +472,8 @@ contains
 
           xs_urban         =>    soilhydrology_inst%xs_urban_col     , & ! Output: [real(r8) (:)   ]  excess soil water above urban ponding limit
 
-          h2osoi_liq       =>    waterstatebulk_inst%h2osoi_liq_col        & ! Input:  [real(r8) (:,:) ]  liquid water (kg/m2)     
+          h2osoi_liq       =>    waterstatebulk_inst%h2osoi_liq_col    ,    & ! Input:  [real(r8) (:,:) ]  liquid water (kg/m2)     
+          qflx_lat_h2osfc_surf =>    waterfluxbulk_inst%qflx_lat_h2osfc_surf_col  &
           )
 
      dtime = get_step_size_real()
@@ -485,8 +486,13 @@ contains
         c = filter_hydrologyc(fc)
         ! Depending on whether h2osfcflag is 0 or 1, one of qflx_infl_excess or
         ! qflx_h2osfc_surf will always be 0. But it's safe to just add them both.
-        qflx_surf(c) = qflx_sat_excess_surf(c) + qflx_infl_excess_surf(c) - qflx_h2osfc_surf(c)
+        qflx_surf(c) = qflx_sat_excess_surf(c) + qflx_infl_excess_surf(c) - qflx_h2osfc_surf(c) !- qflx_lat_h2osfc_surf(c)/dtime
+
+        write(iulog, *) "Total Surface Runof", c, qflx_surf(c)
+        write(iulog, *) "Surface Runoff from Standing water",qflx_h2osfc_surf(c)
+        write(iulog, *) "surface Water runnof Tiles", c, qflx_lat_h2osfc_surf(c)
      end do
+
 
      ! ------------------------------------------------------------------------
      ! Set qflx_surf for non-hydrologically-active urban columns

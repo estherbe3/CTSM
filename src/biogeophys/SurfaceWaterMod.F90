@@ -390,6 +390,22 @@ contains
 
     dtime = get_step_size_real()
 
+  !Add lateral surface fluxes between two tiles.
+    if (use_excess_ice_tiles .and. use_tiles_lateral_water) then 
+    call Lateral_SurfaceWater_Dis(bounds, num_hydrologyc, filter_hydrologyc, &
+         waterdiagnosticbulk_inst,&
+         h2osfcflag = h2osfcflag, &
+         h2osfc = h2osfc(bounds%begc:bounds%endc),&
+         qflx_lat_h2osfc_surf= qflx_lat_h2osfc_surf(bounds%begc: bounds%endc))
+        do fc = 1, num_hydrologyc
+            c = filter_hydrologyc(fc)
+            h2osfc(c) = h2osfc(c) +  qflx_lat_h2osfc_surf(c)
+         end do
+    endif
+            
+       write(iulog,*)"Lateral Surface Flux", qflx_lat_h2osfc_surf
+       write(iulog,*)"H2O Surf", h2osfc_partial
+       
     call QflxH2osfcSurf(bounds, num_hydrologyc, filter_hydrologyc, &
          h2osfcflag = h2osfcflag, &
          h2osfc = h2osfc(bounds%begc:bounds%endc), &
@@ -420,21 +436,7 @@ contains
          qinmax = qinmax(bounds%begc:bounds%endc), &
          qflx_h2osfc_drain = qflx_h2osfc_drain(bounds%begc:bounds%endc))
 
-  !Add lateral surface fluxes between two tiles.
-    if (use_excess_ice_tiles .and. use_tiles_lateral_water) then 
-    call Lateral_SurfaceWater_Dis(bounds, num_hydrologyc, filter_hydrologyc, &
-         waterdiagnosticbulk_inst,&
-         h2osfcflag = h2osfcflag, &
-         h2osfc = h2osfc_partial(bounds%begc:bounds%endc),&
-         qflx_lat_h2osfc_surf= qflx_lat_h2osfc_surf(bounds%begc: bounds%endc))
-         do fc = 1, num_hydrologyc
-             c = filter_hydrologyc(fc)
-            h2osfc_partial(c) = h2osfc(c) +  qflx_lat_h2osfc_surf(c)
-         end do
-    endif
-            
-       write(iulog,*)"Lateral Surface Flux", qflx_lat_h2osfc_surf
-       write(iulog,*)"H2O Surf", h2osfc_partial
+
        
 
     ! Update h2osfc based on fluxes
