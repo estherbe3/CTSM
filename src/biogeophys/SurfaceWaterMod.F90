@@ -390,22 +390,8 @@ contains
 
     dtime = get_step_size_real()
 
-  !Add lateral surface fluxes between two tiles.
-    if (use_excess_ice_tiles .and. use_tiles_lateral_water) then 
-    call Lateral_SurfaceWater_Dis(bounds, num_hydrologyc, filter_hydrologyc, &
-         waterdiagnosticbulk_inst,&
-         h2osfcflag = h2osfcflag, &
-         h2osfc = h2osfc(bounds%begc:bounds%endc),&
-         qflx_lat_h2osfc_surf= qflx_lat_h2osfc_surf(bounds%begc: bounds%endc))
-        do fc = 1, num_hydrologyc
-            c = filter_hydrologyc(fc)
-            h2osfc(c) = h2osfc(c) +  qflx_lat_h2osfc_surf(c)
-         end do
-    endif
-            
-       write(iulog,*)"Lateral Surface Flux", qflx_lat_h2osfc_surf
-       write(iulog,*)"H2O Surf", h2osfc_partial
-       
+    write(iulog,*)"Surface Water1", h2osfc
+
     call QflxH2osfcSurf(bounds, num_hydrologyc, filter_hydrologyc, &
          h2osfcflag = h2osfcflag, &
          h2osfc = h2osfc(bounds%begc:bounds%endc), &
@@ -423,7 +409,7 @@ contains
        c = filter_hydrologyc(fc)
        h2osfc_partial(c) = h2osfc(c) + (qflx_in_h2osfc(c) - qflx_h2osfc_surf(c)) * dtime
     end do
-
+   write(iulog,*)"Surface Water2", h2osfc_partial
     call truncate_small_values(num_f = num_hydrologyc, filter_f = filter_hydrologyc, &
          lb = bounds%begc, ub = bounds%endc, &
          data_baseline = h2osfc(bounds%begc:bounds%endc), &
@@ -444,6 +430,33 @@ contains
        c = filter_hydrologyc(fc)
        h2osfc(c) = h2osfc_partial(c) - qflx_h2osfc_drain(c) * dtime
     end do
+    write(iulog,*)"Surface Water3", h2osfc
+ !Add lateral surface fluxes between two tiles.
+    if (use_excess_ice_tiles .and. use_tiles_lateral_water) then 
+      call Lateral_SurfaceWater_Dis(bounds, num_hydrologyc, filter_hydrologyc, &
+           waterdiagnosticbulk_inst,&
+           h2osfcflag = h2osfcflag, &
+           h2osfc = h2osfc(bounds%begc:bounds%endc),&
+           qflx_lat_h2osfc_surf= qflx_lat_h2osfc_surf(bounds%begc: bounds%endc))
+          !do fc = 1, num_hydrologyc
+           !   c = filter_hydrologyc(fc)
+            !  if (c==1) then  ! substract water from higher tile
+             !   h2osfc(c) = h2osfc(c) +  qflx_lat_h2osfc_surf(c) 
+              !else if (c==2) then 
+               !h2osfc(c) = h2osfc(c) +  qflx_lat_h2osfc_surf(c) * A1/A2
+           write(iulog,*)"Lateral Surface Flux", qflx_lat_h2osfc_surf
+        !end do
+        qflx_lat_h2osfc_surf=qflx_lat_h2osfc_surf/dtime
+      endif
+              
+         write(iulog,*)"Lateral Surface Flux", qflx_lat_h2osfc_surf
+         write(iulog,*)"Surface Water2", h2osfc
+
+
+
+
+
+
 
     ! Due to rounding errors, fluxes that should have brought h2osfc to exactly 0 may
     ! have instead left it slightly less than or slightly greater than 0. Correct for
@@ -597,7 +610,7 @@ contains
    integer           , intent(in)    :: num_hydrologyc                     ! number of column soil points in column filter
    integer           , intent(in)    :: filter_hydrologyc(:)               ! column filter for soil points
    integer           , intent(in)    :: h2osfcflag                         ! true => surface water is active
-   real(r8)          , intent(in)    :: h2osfc( bounds%begc: )             ! surface water (mm)
+   real(r8)          , intent(inout)    :: h2osfc( bounds%begc: )             ! surface water (mm)
    real(r8)          , intent(inout) :: qflx_lat_h2osfc_surf (bounds%begc:)
    type(waterdiagnosticbulk_type)  , intent(in) :: waterdiagnosticbulk_inst
  !LOCAL VARIABLES:
@@ -626,14 +639,16 @@ contains
       A2=a_tile2(g)
       c1=lun%coli(l)
       c2=lun%colf(l)
-      dztile2 = 0.5_r8 !initdztile2(g) + exice_subs_tot_acc(c2) - exice_subs_tot_acc(c1)
+      dztile2 = 0.5_r8 !initdztile2(g) + exice_subs_tot_acc(c2) - exice_subs_tot_acc(c1)  !!!!!needs to be fixed
       
       if (dztile2>0) then  ! Tile1 is higher than Tile 2
       
-         qflx_lat_h2osfc_surf(c2)= h2osfc(c1)* (A1/A2)
+         qflx_lat_h2osfc_surf(c2)= h2osfc(c1)!* (A1/A2)
          qflx_lat_h2osfc_surf(c1)=-h2osfc(c1)
+         h2osfc(c1)=h2osfc(c1)+ qflx_lat_h2osfc_surf(c1)
+         h2osfc(c2)= h2osfc(c2)+ qflx_lat_h2osfc_surf(c2)* (A1/A2)
       else if (dztile2<0 ) then 
-         qflx_lat_h2osfc_surf(c1)= h2osfc(c2)* (A1/A2)
+         qflx_lat_h2osfc_surf(c1)= h2osfc(c2)!"* (A1/A2)
          qflx_lat_h2osfc_surf(c2)=-h2osfc(c2)
       else
          qflx_lat_h2osfc_surf(c1)= 0._r8

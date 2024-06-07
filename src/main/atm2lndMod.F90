@@ -94,7 +94,7 @@ contains
 
   !-----------------------------------------------------------------------
   subroutine downscale_forcings(bounds, &
-       topo_inst, atm2lnd_inst, wateratm2lndbulk_inst, eflx_sh_precip_conversion, waterstatebulk_inst, waterdiagnosticbulk_inst)
+       topo_inst, atm2lnd_inst, wateratm2lndbulk_inst, eflx_sh_precip_conversion, waterstatebulk_inst, waterdiagnosticbulk_inst,waterfluxbulk_inst)
     !
     ! !DESCRIPTION:
     ! Downscale atmospheric forcing fields from gridcell to column.
@@ -121,17 +121,20 @@ contains
     use GridcellType             , only : grc
     use WaterStateBulkType       , only : waterstatebulk_type
     use WaterDiagnosticBulkType  , only : waterdiagnosticbulk_type
-    use clm_varctl               , only : use_excess_ice_tiles, use_tiles_snow
+    use WaterFluxBulkType        , only : waterfluxbulk_type
+    use clm_varctl               , only : use_excess_ice_tiles, use_tiles_snow, use_tiles_lateral_water
     use landunit_varcon          , only : istsoil
     use clm_instur               , only : exice_tile_mask, a_tile1, a_tile2, tile_hightdiff
+    use clm_time_manager         , only : get_step_size_real
     !
     ! !ARGUMENTS:
-    type(bounds_type)  , intent(in)    :: bounds  
+    type(bounds_type)  , intent(in)    :: bounds
     class(topo_type)   , intent(in)    :: topo_inst
     type(atm2lnd_type) , intent(inout) :: atm2lnd_inst
     type(wateratm2lndbulk_type) , intent(inout) :: wateratm2lndbulk_inst
     type(waterstatebulk_type)      ,  intent(inout) :: waterstatebulk_inst
     type(waterdiagnosticbulk_type) ,  intent(inout) :: waterdiagnosticbulk_inst
+    type(waterfluxbulk_type)     , intent(inout) :: waterfluxbulk_inst
     real(r8)           , intent(out)   :: eflx_sh_precip_conversion(bounds%begc:) ! sensible heat flux from precipitation conversion (W/m**2) [+ to atm]
     !
     ! !LOCAL VARIABLES:
@@ -149,6 +152,7 @@ contains
     real(r8) :: tbot_c, pbot_c, thbot_c, qbot_c, qs_c, rhos_c
     real(r8) :: rhos_c_estimate, rhos_g_estimate
     real(r8) :: SnowDepthTreshold !m
+    real(r8) :: dtime ! land model time step (sec)
 
     character(len=*), parameter :: subname = 'downscale_forcings'
     !-----------------------------------------------------------------------
@@ -182,12 +186,13 @@ contains
          forc_rain_c               => wateratm2lndbulk_inst%forc_rain_downscaled_col    , & ! Output: [real(r8) (:)]  rain rate [mm/s]
          forc_snow_c               => wateratm2lndbulk_inst%forc_snow_downscaled_col    , & ! Output: [real(r8) (:)]  snow rate [mm/s]
 
-
          ! Column-level state fields for snow redistribution
          snow_depth   => waterdiagnosticbulk_inst%snow_depth_col        , & ! Input: [real(r8) (:)   ] snow height (m)  
-         exice_subs_tot_acc   =>    waterdiagnosticbulk_inst%exice_subs_tot_acc  & ! Input: [real(r8) (:) ]  subsidence due to excess ice melt (m)   
+         exice_subs_tot_acc   =>    waterdiagnosticbulk_inst%exice_subs_tot_acc , & ! Input: [real(r8) (:) ]  subsidence due to excess ice melt (m)   
+
+         qflx_lat_h2osfc_surf =>    waterfluxbulk_inst%qflx_lat_h2osfc_surf_col  & ! Output: [real(r8) (:)   ]  surface water runoff (mm H2O /s) 
          )
-      initdztile2(bounds%begg:bounds%endg) =  tile_hightdiff(bounds%begg:bounds%endg)
+    
 
       ! Initialize column forcing (needs to be done for ALL active columns)
       do c = bounds%begc,bounds%endc
@@ -276,17 +281,21 @@ contains
 
       call partition_precip(bounds, atm2lnd_inst, wateratm2lndbulk_inst, &
            eflx_sh_precip_conversion(bounds%begc:bounds%endc))
-            
-     !Horizontal snow redistribution based on excess ice and snow 
+         
+      !dtime = get_step_size_real()
+
+     !Horizontal snow redistribution based on excess ice and snow    
       SnowDepthTreshold = 0.05_r8
       if ( use_excess_ice_tiles .and. use_tiles_snow) then 
          do g = bounds%begg,bounds%endg
             l = grc%landunit_indices(istsoil,g)   
             if (lun%ncolumns(l) == 2 .and. exice_tile_mask(g) == 1) then
+               initdztile2(bounds%begg:bounds%endg) =  tile_hightdiff(bounds%begg:bounds%endg)
                c1=lun%coli(l)
                c2=lun%colf(l)
                A1=a_tile1(g)
                A2=a_tile2(g)
+
                !A1=col%a_tile(c1)     !read geometry of files
                !A2=col%a_tile(c2)
                !dztile2 = (initdztile2(g) + exice_subs_tot_acc(c2) - snow_depth(c2)) - &
@@ -299,23 +308,35 @@ contains
                   forc_snow_c(c1) = 0.0_r8
                   !call endrun(subgrid_index=c, subgrid_level=subgrid_level_column, &
                   !msg=errMsg(sourcefile, __LINE__))
-                   elseif (dztile2 < - SnowDepthTreshold) then
+                  elseif (dztile2 < - SnowDepthTreshold) then
                   forc_snow_c(c1) = forc_snow_c(c1) + forc_snow_c(c1)*(A2/A1)
                   forc_snow_c(c2) = 0.0_r8
                   !call endrun(subgrid_index=c, subgrid_level=subgrid_level_column, &
                   !msg=errMsg(sourcefile, __LINE__))
-               endif
+                  endif
+                  
+                 ! if (use_excess_ice_tiles .and. use_tiles_lateral_water) then 
+                 ! forc_rain_c(c1)=forc_rain_c(c1)+ qflx_lat_h2osfc_surf(c1)/dtime
+                 ! forc_rain_c(c2)=forc_rain_c(c2)+ qflx_lat_h2osfc_surf(c2)/dtime
+                 ! endif  
+
             endif
+           
          enddo
       endif 
 
+     
+   
+
+        !Add lateral surface fluxes between two tiles.
+      
 
 
       call downscale_longwave(bounds, downscale_filter_c, topo_inst, atm2lnd_inst)
 
       call check_downscale_consistency(bounds, atm2lnd_inst, wateratm2lndbulk_inst)
 
-    end associate
+   end associate
 
   end subroutine downscale_forcings
 

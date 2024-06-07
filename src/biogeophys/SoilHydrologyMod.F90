@@ -366,7 +366,7 @@ contains
           qflx_in_soil            => waterfluxbulk_inst%qflx_in_soil_col                      , & ! Input:  [real(r8) (:)   ] surface input to soil (mm/s)
           qflx_top_soil_to_h2osfc => waterfluxbulk_inst%qflx_top_soil_to_h2osfc_col           , & ! Input:  [real(r8) (:)   ] portion of qflx_top_soil going to h2osfc, minus evaporation (mm/s)
           qflx_infl_excess        => waterfluxbulk_inst%qflx_infl_excess_col                  , & ! Input:  [real(r8) (:)   ] infiltration excess runoff (mm H2O /s)
-
+          qflx_lat_h2osfc_surf    => waterfluxbulk_inst%qflx_lat_h2osfc_surf_col , & ! Output: [real(r8) (:)   ]  surface water runoff (mm H2O /s)  
           h2osfcflag              => soilhydrology_inst%h2osfcflag                          & ! Input:  integer
           )
 
@@ -375,7 +375,7 @@ contains
         if (lun%itype(col%landunit(c)) == istsoil .or. lun%itype(col%landunit(c))==istcrop) then
            qflx_in_soil_limited(c) = qflx_in_soil(c) - qflx_infl_excess(c)
            if (h2osfcflag /= 0) then
-              qflx_in_h2osfc(c) =  qflx_top_soil_to_h2osfc(c) + qflx_infl_excess(c)
+              qflx_in_h2osfc(c) =  qflx_top_soil_to_h2osfc(c) + qflx_infl_excess(c) !+ qflx_lat_h2osfc_surf(c)
               qflx_infl_excess_surf(c) = 0._r8
            else
               ! No h2osfc pool, so qflx_infl_excess goes directly to surface runoff
@@ -486,7 +486,7 @@ contains
         c = filter_hydrologyc(fc)
         ! Depending on whether h2osfcflag is 0 or 1, one of qflx_infl_excess or
         ! qflx_h2osfc_surf will always be 0. But it's safe to just add them both.
-        qflx_surf(c) = qflx_sat_excess_surf(c) + qflx_infl_excess_surf(c) - qflx_h2osfc_surf(c) !- qflx_lat_h2osfc_surf(c)/dtime
+        qflx_surf(c) = qflx_sat_excess_surf(c) + qflx_infl_excess_surf(c) - qflx_h2osfc_surf(c) - qflx_lat_h2osfc_surf(c)
 
         write(iulog, *) "Total Surface Runof", c, qflx_surf(c)
         write(iulog, *) "Surface Runoff from Standing water",qflx_h2osfc_surf(c)
