@@ -1792,14 +1792,15 @@ contains
                            transmis = transmis + 1.e-3_r8*hksat(c_src,k)*dz(c_src,k)
                         endif
                         endif
-                        !write(iulog,*) "TRANSMISS: c",c,"c1",c1,"c2",c2,"transmis",transmis,'z(c_src,k)',z(c_src,k),'diff',diff,'k',k,k_perch(c_src),k_frost(c_src)
+                        write(iulog,*) "TRANSMISS: c",c,"c1",c1,"c2",c2,"transmis",transmis,'z(c_src,k)',z(c_src,k),'diff',diff,'k',k,k_perch(c_src),k_frost(c_src)
                      enddo
                    endif
                   if (c==c_dst) then
                       qflx_drain_perched(c)=-abs(1.e3_r8*(transmis*dl*head_gradient/A_drc)) !10 must be replaced by area of c_dst
-                  else
-                     qflx_drain_perched(c)=abs(1.e3_r8*(transmis*dl*head_gradient/A_src)) !10 must be replaced by area of c_src
+                      qflx_drain_perched(c_src)=abs(1.e3_r8*(transmis*dl*head_gradient/A_src)) !10 must be replaced by area of c_src
                   endif
+                  write(iulog, *) "c", c, "drainage", qflx_drain_perched(c)
+                  write(iulog, *) "Drainage", qflx_drain_perched
                else
                     !------------------------------------------------------------------KSA
                    ! specify maximum drainage rate
@@ -1816,6 +1817,8 @@ contains
                      qflx_drain_perched(c) = q_perch_max * q_perch &
                      *(frost_table(c) - zwt_perched(c))
                   endif
+
+                  write(iulog, *) "drainage after correction", c, qflx_drain_perched(c)
                endif 
             endif
           endif 
@@ -1839,9 +1842,10 @@ contains
                 drainage_layer=min(drainage_tot,(s_y*(dz(c,k))*1.e3))
              endif
 
-             drainage_layer=max(drainage_layer,0._r8)
+             !drainage_layer=max(drainage_layer,0._r8)
              drainage_tot = drainage_tot - drainage_layer
              h2osoi_liq(c,k) = h2osoi_liq(c,k) - drainage_layer
+             write(iulog, *)"c", c, "drainage tot", drainage_tot,"drainage_layer", drainage_layer
           enddo
 
           ! if drainage_tot is greater than available water
