@@ -1788,40 +1788,46 @@ contains
                         if(k == k_perch(c_src)) then !we must take the right depth of the layer k, maybe table is not the whole layer thickness
                          transmis = transmis + 1.e-3_r8*hksat(c_src,k)*(zi(c_src,k) - zwt_perched(c_src))
                         else
-                        if (z(c_src,k)+diff < frost_table(c_dst)) then !the source depth must be smaller than the frost table depth of the destination 
+                         if (z(c_src,k)+diff < frost_table(c_dst)) then !the source depth must be smaller than the frost table depth of the destination 
                            transmis = transmis + 1.e-3_r8*hksat(c_src,k)*dz(c_src,k)
+                         endif
                         endif
-                        endif
-                        write(iulog,*) "TRANSMISS: c",c,"c1",c1,"c2",c2,"transmis",transmis,'z(c_src,k)',z(c_src,k),'diff',diff,'k',k,k_perch(c_src),k_frost(c_src)
-                     enddo
-                   endif
-                  if (c==c_dst) then
-                      qflx_drain_perched(c)=-abs(1.e3_r8*(transmis*dl*head_gradient/A_drc)) !10 must be replaced by area of c_dst
-                      qflx_drain_perched(c_src)=abs(1.e3_r8*(transmis*dl*head_gradient/A_src)) !10 must be replaced by area of c_src
+                        write(iulog,*) "TRANSMISS: c",c,"c1",c1,"c2",c2,"transmis",transmis,'z(c_src,k)',z(c_src,k),'diff',diff
+                        write(iulog,*)'k src',k,k_perch(c_src),k_frost(c_src), "k dst", k, k_perch(c_dst), k_frost(c_dst)
+                    enddo
                   endif
+                 ! if (c==c_src) then
+                   qflx_drain_perched(c_dst)=-abs(1.e3_r8*(transmis*dl*head_gradient/A_drc)) 
+                   qflx_drain_perched(c_src)=+abs(1.e3_r8*(transmis*dl*head_gradient/A_src)) 
+                  !endif
+
+                  !if (c==c_dst) then
+                   !  qflx_drain_perched(c)=-abs(1.e3_r8*(transmis*dl*head_gradient/A_drc)) 
+                    ! qflx_drain_perched(c_src)=+abs(1.e3_r8*(transmis*dl*head_gradient/A_src)) 
+                 !endif
+
                   write(iulog, *) "c", c, "drainage", qflx_drain_perched(c)
                   write(iulog, *) "Drainage", qflx_drain_perched
-               else
+               endif
+            else
                     !------------------------------------------------------------------KSA
-                   ! specify maximum drainage rate
-                   q_perch_max = params_inst%perched_baseflow_scalar &
-                    * sin(col%topo_slope(c) * (rpi/180._r8))
-                   wtsub = 0._r8
-                  q_perch = 0._r8
-                  do k = k_perch(c), k_frost(c)-1
-                     q_perch = q_perch + hksat(c,k)*dz(c,k)
-                     wtsub = wtsub + dz(c,k)
-                  end do
-                  if (wtsub > 0._r8) then
-                     q_perch = q_perch/wtsub
-                     qflx_drain_perched(c) = q_perch_max * q_perch &
-                     *(frost_table(c) - zwt_perched(c))
-                  endif
-
-                  write(iulog, *) "drainage after correction", c, qflx_drain_perched(c)
-               endif 
+               ! specify maximum drainage rate
+               q_perch_max = params_inst%perched_baseflow_scalar &
+               * sin(col%topo_slope(c) * (rpi/180._r8))
+               wtsub = 0._r8
+               q_perch = 0._r8
+               do k = k_perch(c), k_frost(c)-1
+                  q_perch = q_perch + hksat(c,k)*dz(c,k)
+                  wtsub = wtsub + dz(c,k)
+               end do
+               if (wtsub > 0._r8) then
+                 q_perch = q_perch/wtsub
+                 qflx_drain_perched(c) = q_perch_max * q_perch &
+                 *(frost_table(c) - zwt_perched(c))
+               endif
+               write(iulog, *) "drainage after correction", c, qflx_drain_perched(c)
             endif
-          endif 
+         endif 
         enddo
              
        ! remove drainage from soil moisture storage
@@ -1830,6 +1836,7 @@ contains
           
           ! remove drainage from perched saturated layers
           drainage_tot =  qflx_drain_perched(c) * dtime
+          write(iulog, *) "c", c, "drain_tot",drainage_tot
 
           do k = k_perch(c), k_frost(c)-1
              s_y = watsat(c,k) &
@@ -1844,14 +1851,17 @@ contains
 
              !drainage_layer=max(drainage_layer,0._r8)
              drainage_tot = drainage_tot - drainage_layer
+             write(iulog, *) "H2O_liq", h2osoi_liq(c,k), "c", c, "k", k
              h2osoi_liq(c,k) = h2osoi_liq(c,k) - drainage_layer
              write(iulog, *)"c", c, "drainage tot", drainage_tot,"drainage_layer", drainage_layer
+             write(iulog, *) "H2O_liq updated", h2osoi_liq(c,k)
           enddo
 
           ! if drainage_tot is greater than available water
           ! (above frost table), then decrease qflx_drain_perched
           ! by residual amount for water balance
           qflx_drain_perched(c) = qflx_drain_perched(c) - drainage_tot/dtime
+          write(iulog,*) "c",c, "QLEX(c)", qflx_drain_perched(c)
        enddo
 
      end associate

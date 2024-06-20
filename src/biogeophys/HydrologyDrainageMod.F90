@@ -132,18 +132,16 @@ contains
               num_urbanc, filter_urbanc,&
               temperature_inst, soilhydrology_inst, soilstate_inst, &
               waterstatebulk_inst, waterfluxbulk_inst)
-      else
-         
-         call PerchedLateralFlow(bounds, num_hydrologyc, filter_hydrologyc, &
-              soilhydrology_inst, soilstate_inst, &
-              waterstatebulk_inst, waterfluxbulk_inst, waterdiagnosticbulk_inst)
-
-         
+      else        
          call LateralFlowPowerLaw(bounds, num_hydrologyc, filter_hydrologyc, &
               num_urbanc, filter_urbanc,&
               soilhydrology_inst, soilstate_inst, &
               waterstatebulk_inst, waterfluxbulk_inst)
-
+              
+              
+         call PerchedLateralFlow(bounds, num_hydrologyc, filter_hydrologyc, &
+              soilhydrology_inst, soilstate_inst, &
+              waterstatebulk_inst, waterfluxbulk_inst, waterdiagnosticbulk_inst)
       endif
 
       do j = 1, nlevgrnd
