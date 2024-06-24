@@ -143,6 +143,7 @@ contains
               soilhydrology_inst, soilstate_inst, &
               waterstatebulk_inst, waterfluxbulk_inst, waterdiagnosticbulk_inst)
       endif
+      write(iulog, *) "Perch water after Perch Flow Calculation", qflx_drain_perched
 
       do j = 1, nlevgrnd
          do fc = 1, num_nolakec
@@ -220,6 +221,9 @@ contains
          end if
 
       end do
+
+      write(iulog,*) "Perch water:", qflx_drain_perched
+      write(iulog,*) "Runoff:", qflx_runoff_r
 
     end associate
 

@@ -1744,14 +1744,16 @@ contains
       enddo
 
       ! compute drainage from perched saturated region
-      do fc = 1, num_hydrologyc
+      
+      if ( use_excess_ice_tiles .and. use_tiles_lateral_water) then  
+         qflx_drain_perched = 0._r8
+         outer: do fc = 1, num_hydrologyc
          c = filter_hydrologyc(fc)
          
-         qflx_drain_perched(c) = 0._r8
-         if (frost_table(c) > zwt_perched(c)) then
-            l = col%landunit(c)               
-            g = col%gridcell(c)    
-            if ( use_excess_ice_tiles .and. use_tiles_lateral_water) then   
+            if (frost_table(c) > zwt_perched(c)) then
+               l = col%landunit(c)               
+               g = col%gridcell(c)    
+            
                initdztile2(bounds%begg:bounds%endg) = tile_hightdiff(bounds%begg:bounds%endg) !  KSA 
                dx = tile_dist(g)
                dl = tile_ctl(g) 
@@ -1797,20 +1799,94 @@ contains
                     enddo
                   endif
                  ! if (c==c_src) then
-                   qflx_drain_perched(c_dst)=-abs(1.e3_r8*(transmis*dl*head_gradient/A_drc)) 
-                   qflx_drain_perched(c_src)=+abs(1.e3_r8*(transmis*dl*head_gradient/A_src)) 
+                   !qflx_drain_perched(c_dst)=qflx_drain_perched(c_dst)-abs(1.e3_r8*(transmis*dl*head_gradient/A_drc)) 
+                   !qflx_drain_perched(c_src)=qflx_drain_perched(c_src)+abs(1.e3_r8*(transmis*dl*head_gradient/A_src)) 
                   !endif
 
                   !if (c==c_dst) then
-                   !  qflx_drain_perched(c)=-abs(1.e3_r8*(transmis*dl*head_gradient/A_drc)) 
-                    ! qflx_drain_perched(c_src)=+abs(1.e3_r8*(transmis*dl*head_gradient/A_src)) 
+                    qflx_drain_perched(c_dst)=-abs(1.e3_r8*(transmis*dl*head_gradient/A_drc)) 
+                    qflx_drain_perched(c_src)=+abs(1.e3_r8*(transmis*dl*head_gradient/A_src)) 
                  !endif
+                ! remove drainage from perched saturated layers
+                    drainage_tot =  qflx_drain_perched(c_src) * dtime
+                    write(iulog, *) "c", c_src, "drain_tot",drainage_tot
+                    do k = k_perch(c_src), k_frost(c_src)-1
+                    c=c_src
+                    s_y = watsat(c,k) &
+                       * ( 1. - (1.+1.e3*zwt_perched(c)/sucsat(c,k))**(-1./bsw(c,k)))
+                    s_y=max(s_y,params_inst%aq_sp_yield_min)
+     
+                    if (k == k_perch(c)) then
+                     drainage_layer=min(drainage_tot,(s_y*(zi(c,k) - zwt_perched(c))*1.e3))
+                    else
+                      drainage_layer=min(drainage_tot,(s_y*(dz(c,k))*1.e3))
+                    endif
+     
+                     !drainage_layer=max(drainage_layer,0._r8)
+                     drainage_tot = drainage_tot - drainage_layer
+                     write(iulog, *) "H2O_liq", h2osoi_liq(c,k), "c", c, "k", k
+                     h2osoi_liq(c,k) = h2osoi_liq(c,k) - drainage_layer
+                      write(iulog, *)"c", c, "drainage tot", drainage_tot,"drainage_layer", drainage_layer
+                     write(iulog, *) "H2O_liq updated", h2osoi_liq(c,k)
+                     enddo
+               
+                    qflx_drain_perched(c_src) = qflx_drain_perched(c_src) - drainage_tot/dtime
+                    drainage_tot =  qflx_drain_perched(c_dst) * dtime
+                    write(iulog, *) "c", c_dst, "drain_tot",drainage_tot
 
+                   if (k_perch(c_dst) == k_frost(c_dst)) then
+                        k=1
+                        s_y = watsat(c_dst,k) &
+                        * ( 1. - (1.+1.e3*zwt_perched(c_dst)/sucsat(c_dst,k))**(-1./bsw(c_dst,k)))
+                        s_y=max(s_y,params_inst%aq_sp_yield_min)
+                        drainage_layer=min(drainage_tot,(s_y*(dz(c_dst,k))*1.e3))
+                        !drainage_tot = drainage_tot - drainage_layer
+                        write(iulog, *) "Perch=frost: H2O_liq", h2osoi_liq(c_dst,k), "c", c_dst, "k", k
+                        write(iulog, *)"c", c_dst, "drainage tot", drainage_tot,"drainage_layer", drainage_layer
+                      
+                        h2osoi_liq(c_dst,k) = h2osoi_liq(c_dst,k) - drainage_layer
+                        write(iulog, *) "H2O_liq updated", h2osoi_liq(c_dst,k)
+                   else
+                        do k = k_perch(c_dst), k_frost(c_dst)-1
+                           s_y = watsat(c_dst,k) &
+                           * ( 1. - (1.+1.e3*zwt_perched(c_dst)/sucsat(c_dst,k))**(-1./bsw(c_dst,k)))
+                           s_y=max(s_y,params_inst%aq_sp_yield_min)
+        
+                           if (k == k_perch(c_dst)) then
+                              drainage_layer=min(drainage_tot,(s_y*(zi(c_dst,k) - zwt_perched(c_dst))*1.e3))
+                           else
+                              drainage_layer=min(drainage_tot,(s_y*(dz(c_dst,k))*1.e3))
+                           endif
+        
+                           !drainage_layer=max(drainage_layer,0._r8)
+                           drainage_tot = drainage_tot - drainage_layer
+                           write(iulog, *) "H2O_liq", h2osoi_liq(c_dst,k), "c_dst", c_dst, "k", k
+                           h2osoi_liq(c_dst,k) = h2osoi_liq(c_dst,k) - drainage_layer
+                           write(iulog, *)"c_dst", c_dst, "drainage tot", drainage_tot,"drainage_layer", drainage_layer
+                           write(iulog, *) "H2O_liq updated", h2osoi_liq(c_dst,k)
+                           qflx_drain_perched(c_dst) = qflx_drain_perched(c_dst) - drainage_tot/dtime
+                        enddo
+                  endif
+                     ! if drainage_tot is greater than available water
+                     ! (above frost table), then decrease qflx_drain_perched
+                     ! by residual amount for water balance
+                    
+                     write(iulog,*) "c",c, "QLEX(c)", qflx_drain_perched
+                  !enddo
+               
                   write(iulog, *) "c", c, "drainage", qflx_drain_perched(c)
                   write(iulog, *) "Drainage", qflx_drain_perched
+                  if (c_src==c1) exit outer 
                endif
-            else
-                    !------------------------------------------------------------------KSA
+            endif
+          enddo outer
+           write(iulog, *) "test0"
+      else
+         !------------------------------------------------------------------EB
+         do fc = 1, num_hydrologyc
+            c = filter_hydrologyc(fc)
+            qflx_drain_perched(c) = 0._r8
+            if (frost_table(c) > zwt_perched(c)) then
                ! specify maximum drainage rate
                q_perch_max = params_inst%perched_baseflow_scalar &
                * sin(col%topo_slope(c) * (rpi/180._r8))
@@ -1827,18 +1903,10 @@ contains
                endif
                write(iulog, *) "drainage after correction", c, qflx_drain_perched(c)
             endif
-         endif 
-        enddo
-             
-       ! remove drainage from soil moisture storage
-       do fc = 1, num_hydrologyc
-          c = filter_hydrologyc(fc)
-          
+
           ! remove drainage from perched saturated layers
           drainage_tot =  qflx_drain_perched(c) * dtime
-          write(iulog, *) "c", c, "drain_tot",drainage_tot
-
-          do k = k_perch(c), k_frost(c)-1
+            do k = k_perch(c), k_frost(c)-1
              s_y = watsat(c,k) &
                   * ( 1. - (1.+1.e3*zwt_perched(c)/sucsat(c,k))**(-1./bsw(c,k)))
              s_y=max(s_y,params_inst%aq_sp_yield_min)
@@ -1849,22 +1917,20 @@ contains
                 drainage_layer=min(drainage_tot,(s_y*(dz(c,k))*1.e3))
              endif
 
-             !drainage_layer=max(drainage_layer,0._r8)
+             drainage_layer=max(drainage_layer,0._r8)
              drainage_tot = drainage_tot - drainage_layer
-             write(iulog, *) "H2O_liq", h2osoi_liq(c,k), "c", c, "k", k
              h2osoi_liq(c,k) = h2osoi_liq(c,k) - drainage_layer
-             write(iulog, *)"c", c, "drainage tot", drainage_tot,"drainage_layer", drainage_layer
-             write(iulog, *) "H2O_liq updated", h2osoi_liq(c,k)
-          enddo
+           enddo
 
           ! if drainage_tot is greater than available water
           ! (above frost table), then decrease qflx_drain_perched
           ! by residual amount for water balance
           qflx_drain_perched(c) = qflx_drain_perched(c) - drainage_tot/dtime
-          write(iulog,*) "c",c, "QLEX(c)", qflx_drain_perched(c)
-       enddo
-
-     end associate
+         enddo
+      endif 
+      write(iulog, *) "drainage end Perch", c, qflx_drain_perched
+             
+   end associate
 
    end subroutine PerchedLateralFlow
 
