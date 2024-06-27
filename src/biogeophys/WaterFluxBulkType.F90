@@ -53,7 +53,8 @@ module WaterFluxBulkType
      real(r8), pointer :: qflx_deficit_col         (:)   ! col water deficit to keep non-negative liquid water content (mm H2O)   
      real(r8), pointer :: qflx_snomelt_lyr_col     (:,:) ! col snow melt in each layer (mm H2O /s)
      real(r8), pointer :: qflx_drain_vr_col        (:,:) ! col liquid water losted as drainage (m /time step)
-
+     real(r8), pointer :: qflx_lat_h2osfc_surf_col (:)   ! col lateral surface water flux for EXcess Ice Tiling
+     
      ! ET accumulation
      real(r8), pointer :: AnnEt                    (:)   ! Annual average ET flux mmH20/s                                     
 
@@ -138,6 +139,7 @@ contains
     allocate(this%qflx_snomelt_lyr_col     (begc:endc,-nlevsno+1:0)) ; this%qflx_snomelt_lyr_col     (:,:) = nan
     allocate(this%qflx_deficit_col         (begc:endc))              ; this%qflx_deficit_col         (:)   = nan
     allocate(this%AnnET                    (begc:endc))              ; this%AnnET                    (:)   = nan
+    allocate(this%qflx_lat_h2osfc_surf_col (begc:endc))         ; this%qflx_lat_h2osfc_surf_col     (:)   = nan
 
 
   end subroutine InitBulkAllocate
@@ -229,6 +231,15 @@ contains
          long_name=this%info%lname('surface water runoff'), &
          ptr_col=this%qflx_h2osfc_surf_col)
 
+
+    this%qflx_lat_h2osfc_surf_col(begc:endc) = spval
+    call hist_addfld1d ( &
+         fname=this%info%fname('QH2OSFC_LAT'),  &
+         units='mm/s',  &
+         avgflag='A', &
+         long_name=this%info%lname('surface water exchange between the tiles'), &
+         ptr_col=this%qflx_lat_h2osfc_surf_col, default='inactive')
+
     this%qflx_phs_neg_col(begc:endc) = spval
     call hist_addfld1d ( &
          fname=this%info%fname('QPHSNEG'),  &
@@ -266,6 +277,8 @@ contains
     this%qflx_phs_neg_col(bounds%begc:bounds%endc)   = 0.0_r8
 
     this%qflx_h2osfc_surf_col(bounds%begc:bounds%endc) = 0._r8
+
+    this%qflx_lat_h2osfc_surf_col(bounds%begc:bounds%endc) = 0._r8
 
   end subroutine InitBulkCold
 

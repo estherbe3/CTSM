@@ -38,6 +38,7 @@ module SurfaceWaterMod
   private :: BulkDiag_FracH2oSfc          ! Determine fraction of land surfaces which are submerged
   private :: QflxH2osfcSurf      ! Compute qflx_h2osfc_surf
   private :: QflxH2osfcDrain     ! Compute qflx_h2osfc_drain
+  private :: Lateral_SurfaceWater_Dis ! compute surface water flux between two tiles
   type, private :: params_type
      real(r8) :: pc              ! Threshold probability for surface water (unitless)
      real(r8) :: mu              ! Connectivity exponent for surface water (unitless)
@@ -346,7 +347,11 @@ contains
        infiltration_excess_runoff_inst, &
        energyflux_inst, soilhydrology_inst, &
        waterfluxbulk_inst, waterstatebulk_inst, waterdiagnosticbulk_inst)
-    !
+    
+
+
+   use clm_varctl               , only : iulog, use_excess_ice, use_excess_ice_tiles, use_tiles_lateral_water
+   
     ! !DESCRIPTION:
     ! Calculate fluxes out of h2osfc and update the h2osfc state
     !
@@ -377,12 +382,15 @@ contains
          qflx_in_h2osfc   => waterfluxbulk_inst%qflx_in_h2osfc_col      , & ! Input:  [real(r8) (:)   ] total surface input to h2osfc
          qflx_h2osfc_surf =>    waterfluxbulk_inst%qflx_h2osfc_surf_col , & ! Output: [real(r8) (:)   ]  surface water runoff (mm H2O /s)                       
          qflx_h2osfc_drain => waterfluxbulk_inst%qflx_h2osfc_drain_col  , & ! Output: [real(r8) (:)   ]  bottom drainage from h2osfc (mm H2O /s)
+         qflx_lat_h2osfc_surf =>    waterfluxbulk_inst%qflx_lat_h2osfc_surf_col , & ! Output: [real(r8) (:)   ]  surface water runoff (mm H2O /s)     
          
          h2osfc_thresh    =>    soilhydrology_inst%h2osfc_thresh_col, & ! Input:  [real(r8) (:)   ]  level at which h2osfc "percolates"                
          h2osfcflag       =>    soilhydrology_inst%h2osfcflag         & ! Input:  integer
          )
 
     dtime = get_step_size_real()
+
+    write(iulog,*)"Surface Water1", h2osfc
 
     call QflxH2osfcSurf(bounds, num_hydrologyc, filter_hydrologyc, &
          h2osfcflag = h2osfcflag, &
@@ -401,7 +409,7 @@ contains
        c = filter_hydrologyc(fc)
        h2osfc_partial(c) = h2osfc(c) + (qflx_in_h2osfc(c) - qflx_h2osfc_surf(c)) * dtime
     end do
-
+   write(iulog,*)"Surface Water2", h2osfc_partial
     call truncate_small_values(num_f = num_hydrologyc, filter_f = filter_hydrologyc, &
          lb = bounds%begc, ub = bounds%endc, &
          data_baseline = h2osfc(bounds%begc:bounds%endc), &
@@ -414,11 +422,41 @@ contains
          qinmax = qinmax(bounds%begc:bounds%endc), &
          qflx_h2osfc_drain = qflx_h2osfc_drain(bounds%begc:bounds%endc))
 
+
+       
+
     ! Update h2osfc based on fluxes
     do fc = 1, num_hydrologyc
        c = filter_hydrologyc(fc)
        h2osfc(c) = h2osfc_partial(c) - qflx_h2osfc_drain(c) * dtime
     end do
+    write(iulog,*)"Surface Water3", h2osfc
+ !Add lateral surface fluxes between two tiles.
+    if (use_excess_ice_tiles .and. use_tiles_lateral_water) then 
+      call Lateral_SurfaceWater_Dis(bounds, num_hydrologyc, filter_hydrologyc, &
+           waterdiagnosticbulk_inst,&
+           h2osfcflag = h2osfcflag, &
+           h2osfc = h2osfc(bounds%begc:bounds%endc),&
+           qflx_lat_h2osfc_surf= qflx_lat_h2osfc_surf(bounds%begc: bounds%endc))
+          !do fc = 1, num_hydrologyc
+           !   c = filter_hydrologyc(fc)
+            !  if (c==1) then  ! substract water from higher tile
+             !   h2osfc(c) = h2osfc(c) +  qflx_lat_h2osfc_surf(c) 
+              !else if (c==2) then 
+               !h2osfc(c) = h2osfc(c) +  qflx_lat_h2osfc_surf(c) * A1/A2
+           write(iulog,*)"Lateral Surface Flux", qflx_lat_h2osfc_surf
+        !end do
+        qflx_lat_h2osfc_surf=qflx_lat_h2osfc_surf/dtime
+      endif
+              
+         write(iulog,*)"Lateral Surface Flux", qflx_lat_h2osfc_surf
+         write(iulog,*)"Surface Water2", h2osfc
+
+
+
+
+
+
 
     ! Due to rounding errors, fluxes that should have brought h2osfc to exactly 0 may
     ! have instead left it slightly less than or slightly greater than 0. Correct for
@@ -549,5 +587,79 @@ contains
     end do
 
   end subroutine QflxH2osfcDrain
+
+
+  subroutine Lateral_SurfaceWater_Dis (bounds, num_hydrologyc, filter_hydrologyc,waterdiagnosticbulk_inst, &
+   h2osfcflag, h2osfc,qflx_lat_h2osfc_surf)
+
+
+
+   use clm_varpar      , only : nlevsno, nlevsoi, nlevmaxurbgrnd
+   use clm_varcon      , only : denice, tfrz 
+   use landunit_varcon , only : istsoil
+   use column_varcon   , only : icol_roof, icol_sunwall, icol_shadewall, icol_road_perv, icol_road_imperv
+   use clm_varctl      , only : iulog
+   use GridcellType    , only : grc
+   use LandunitType    , only : lun
+   use abortutils      , only : endrun
+   use shr_log_mod     , only : errMsg => shr_log_errMsg
+   use clm_instur      , only : exice_tile_mask, a_tile1, a_tile2, tile_dist, tile_ctl, tile_hightdiff
+
+ ! ARGUMENTS:
+   type(bounds_type) , intent(in)    :: bounds
+   integer           , intent(in)    :: num_hydrologyc                     ! number of column soil points in column filter
+   integer           , intent(in)    :: filter_hydrologyc(:)               ! column filter for soil points
+   integer           , intent(in)    :: h2osfcflag                         ! true => surface water is active
+   real(r8)          , intent(inout)    :: h2osfc( bounds%begc: )             ! surface water (mm)
+   real(r8)          , intent(inout) :: qflx_lat_h2osfc_surf (bounds%begc:)
+   type(waterdiagnosticbulk_type)  , intent(in) :: waterdiagnosticbulk_inst
+ !LOCAL VARIABLES:
+   integer  :: l,c,j,g                   ! indices
+   integer  :: c1,c2                     ! indeces for tile columns
+   integer  :: fc                        ! lake filtered column indices   
+   real(r8) :: deltaz                    ! difference in heigt between tiles [m]
+   real(r8) :: A1, A2                    ! Areas of tiles 
+   real(r8) :: dztile2                   ! Elevation difference between top of tile 2 compared to tile 1
+   real(r8) :: initdztile2(bounds%begg:bounds%endg)    
+
+
+   SHR_ASSERT_ALL_FL((ubound(h2osfc) == (/bounds%endc/)), sourcefile, __LINE__)
+   SHR_ASSERT_ALL_FL((ubound(qflx_lat_h2osfc_surf) == (/bounds%endc/)), sourcefile, __LINE__)
+
+   !associate( exice_subs_tot_acc   =>    waterdiagnosticbulk_inst%exice_subs_tot_acc   &
+    !  ) ! Input: [real(r8) (:) ]  subsidence due to excess ice melt (m)  )
+
+   initdztile2(bounds%begg:bounds%endg) = tile_hightdiff(bounds%begg:bounds%endg)
+   
+   do g = bounds%begg,bounds%endg
+      l = grc%landunit_indices(istsoil,g) 
+      c = filter_hydrologyc(l)  
+    if (lun%ncolumns(l) == 2 .and. exice_tile_mask(g) == 1 .and. h2osfcflag==1) then
+      A1=a_tile1(g)
+      A2=a_tile2(g)
+      c1=lun%coli(l)
+      c2=lun%colf(l)
+      dztile2 = 0.5_r8 !initdztile2(g) + exice_subs_tot_acc(c2) - exice_subs_tot_acc(c1)  !!!!!needs to be fixed
+      
+      if (dztile2>0) then  ! Tile1 is higher than Tile 2
+      
+         qflx_lat_h2osfc_surf(c2)= h2osfc(c1)!* (A1/A2)
+         qflx_lat_h2osfc_surf(c1)=-h2osfc(c1)
+         h2osfc(c1)=h2osfc(c1)+ qflx_lat_h2osfc_surf(c1)
+         h2osfc(c2)= h2osfc(c2)+ qflx_lat_h2osfc_surf(c2)* (A1/A2)
+      else if (dztile2<0 ) then 
+         qflx_lat_h2osfc_surf(c1)= h2osfc(c2)!"* (A1/A2)
+         qflx_lat_h2osfc_surf(c2)=-h2osfc(c2)
+      else
+         qflx_lat_h2osfc_surf(c1)= 0._r8
+         qflx_lat_h2osfc_surf(c2)=0._r8
+      endif 
+      
+    endif
+   enddo
+
+
+
+  end subroutine Lateral_SurfaceWater_Dis
  
 end module SurfaceWaterMod

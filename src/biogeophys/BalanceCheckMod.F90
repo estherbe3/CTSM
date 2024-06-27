@@ -635,7 +635,26 @@ contains
                   - qflx_ice_runoff_col(c)   &
                   - qflx_snwcp_discarded_liq_col(c) &
                   - qflx_snwcp_discarded_ice_col(c)) * dtime
+                  
+                  write(iulog,*)'nstep                     = ',nstep
+                        write(iulog,*)'errh2o_col                = ',errh2o_col(c)
+                        write(iulog,*)'forc_rain                 = ',forc_rain_col(c)*dtime
+                        write(iulog,*)'forc_snow                 = ',forc_snow_col(c)*dtime
+                        write(iulog,*)'endwb_col                 = ',endwb_col(c)
+                        write(iulog,*)'begwb_col                 = ',begwb_col(c)
 
+                        write(iulog,*)'qflx_evap_tot             = ',qflx_evap_tot_col(c)*dtime
+                        write(iulog,*)'qflx_sfc_irrig            = ',qflx_sfc_irrig_col(c)*dtime
+                        write(iulog,*)'qflx_surf                 = ',qflx_surf_col(c)*dtime
+                        write(iulog,*)'qflx_qrgwl                = ',qflx_qrgwl_col(c)*dtime
+                        write(iulog,*)'qflx_drain                = ',qflx_drain_col(c)*dtime
+
+                        write(iulog,*)'qflx_ice_runoff           = ',qflx_ice_runoff_col(c)*dtime
+
+                        write(iulog,*)'qflx_snwcp_discarded_ice  = ',qflx_snwcp_discarded_ice_col(c)*dtime
+                        write(iulog,*)'qflx_snwcp_discarded_liq  = ',qflx_snwcp_discarded_liq_col(c)*dtime
+                        write(iulog,*)'deltawb                   = ',endwb_col(c)-begwb_col(c)
+                        write(iulog,*)'deltawb/dtime             = ',(endwb_col(c)-begwb_col(c))/dtime
           else
 
              errh2o_col(c) = 0.0_r8
@@ -643,6 +662,8 @@ contains
           end if
 
        end do
+     
+
        
        errh2o_max_val = maxval(abs(errh2o_col(bounds%begc:bounds%endc)))
 

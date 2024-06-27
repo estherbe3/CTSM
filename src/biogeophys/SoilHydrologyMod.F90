@@ -302,13 +302,14 @@ contains
           qflx_sat_excess_surf    =>    waterfluxbulk_inst%qflx_sat_excess_surf_col   , & ! Input:  [real(r8) (:)]  surface runoff due to saturated surface (mm H2O /s)
 
           frac_sno                =>    waterdiagnosticbulk_inst%frac_sno_eff_col          , & ! Input:  [real(r8) (:)   ]  fraction of ground covered by snow (0 to 1)
-          frac_h2osfc             =>    waterdiagnosticbulk_inst%frac_h2osfc_col          & ! Input:  [real(r8) (:)   ]  fraction of ground covered by surface water (0 to 1)
+          frac_h2osfc             =>    waterdiagnosticbulk_inst%frac_h2osfc_col         , & ! Input:  [real(r8) (:)   ]  fraction of ground covered by surface water (0 to 1)
+          qflx_lat_h2osfc_surf =>    waterfluxbulk_inst%qflx_lat_h2osfc_surf_col  & ! Output: [real(r8) (:)   ]  surface water runoff (mm H2O /s) 
           )
 
      do fc = 1, num_hydrologyc
         c = filter_hydrologyc(fc)
 
-        qflx_top_soil(c) = qflx_rain_plus_snomelt(c) + qflx_snow_h2osfc(c) + qflx_floodc(c)
+        qflx_top_soil(c) = qflx_rain_plus_snomelt(c) + qflx_snow_h2osfc(c) + qflx_floodc(c) + qflx_lat_h2osfc_surf(c)
 
         ! ------------------------------------------------------------------------
         ! Partition surface inputs between soil and h2osfc
@@ -365,7 +366,7 @@ contains
           qflx_in_soil            => waterfluxbulk_inst%qflx_in_soil_col                      , & ! Input:  [real(r8) (:)   ] surface input to soil (mm/s)
           qflx_top_soil_to_h2osfc => waterfluxbulk_inst%qflx_top_soil_to_h2osfc_col           , & ! Input:  [real(r8) (:)   ] portion of qflx_top_soil going to h2osfc, minus evaporation (mm/s)
           qflx_infl_excess        => waterfluxbulk_inst%qflx_infl_excess_col                  , & ! Input:  [real(r8) (:)   ] infiltration excess runoff (mm H2O /s)
-
+          qflx_lat_h2osfc_surf    => waterfluxbulk_inst%qflx_lat_h2osfc_surf_col , & ! Output: [real(r8) (:)   ]  surface water runoff (mm H2O /s)  
           h2osfcflag              => soilhydrology_inst%h2osfcflag                          & ! Input:  integer
           )
 
@@ -374,7 +375,7 @@ contains
         if (lun%itype(col%landunit(c)) == istsoil .or. lun%itype(col%landunit(c))==istcrop) then
            qflx_in_soil_limited(c) = qflx_in_soil(c) - qflx_infl_excess(c)
            if (h2osfcflag /= 0) then
-              qflx_in_h2osfc(c) =  qflx_top_soil_to_h2osfc(c) + qflx_infl_excess(c)
+              qflx_in_h2osfc(c) =  qflx_top_soil_to_h2osfc(c) + qflx_infl_excess(c) !+ qflx_lat_h2osfc_surf(c)
               qflx_infl_excess_surf(c) = 0._r8
            else
               ! No h2osfc pool, so qflx_infl_excess goes directly to surface runoff
@@ -471,7 +472,8 @@ contains
 
           xs_urban         =>    soilhydrology_inst%xs_urban_col     , & ! Output: [real(r8) (:)   ]  excess soil water above urban ponding limit
 
-          h2osoi_liq       =>    waterstatebulk_inst%h2osoi_liq_col        & ! Input:  [real(r8) (:,:) ]  liquid water (kg/m2)                            
+          h2osoi_liq       =>    waterstatebulk_inst%h2osoi_liq_col    ,    & ! Input:  [real(r8) (:,:) ]  liquid water (kg/m2)     
+          qflx_lat_h2osfc_surf =>    waterfluxbulk_inst%qflx_lat_h2osfc_surf_col  &
           )
 
      dtime = get_step_size_real()
@@ -484,8 +486,13 @@ contains
         c = filter_hydrologyc(fc)
         ! Depending on whether h2osfcflag is 0 or 1, one of qflx_infl_excess or
         ! qflx_h2osfc_surf will always be 0. But it's safe to just add them both.
-        qflx_surf(c) = qflx_sat_excess_surf(c) + qflx_infl_excess_surf(c) + qflx_h2osfc_surf(c)
+        qflx_surf(c) = qflx_sat_excess_surf(c) + qflx_infl_excess_surf(c) - qflx_h2osfc_surf(c) - qflx_lat_h2osfc_surf(c)
+
+        write(iulog, *) "Total Surface Runof", c, qflx_surf(c)
+        write(iulog, *) "Surface Runoff from Standing water",qflx_h2osfc_surf(c)
+        write(iulog, *) "surface Water runnof Tiles", c, qflx_lat_h2osfc_surf(c)
      end do
+
 
      ! ------------------------------------------------------------------------
      ! Set qflx_surf for non-hydrologically-active urban columns
@@ -535,7 +542,7 @@ contains
      type(soilhydrology_type) , intent(in)    :: soilhydrology_inst
      type(waterfluxbulk_type)     , intent(in)    :: waterfluxbulk_inst
      !
-     ! !LOCAL VARIABLES:
+     ! !LOCAL VARIABLES:qflx_rain_plus_snomelt
      integer  :: fc, c
      real(r8) :: dtime ! land model time step (sec)
 
