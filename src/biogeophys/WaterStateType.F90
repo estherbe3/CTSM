@@ -42,7 +42,7 @@ module WaterStateType
      real(r8), pointer :: h2osfc_col             (:)   ! col surface water (mm H2O)
      real(r8), pointer :: snocan_patch           (:)   ! patch canopy snow water (mm H2O)
      real(r8), pointer :: liqcan_patch           (:)   ! patch canopy liquid water (mm H2O)
-
+     
      real(r8), pointer :: wa_col                 (:)   ! col water in the unconfined aquifer (mm)
 
      ! For the following dynbal baseline variables: positive values are subtracted to
@@ -55,6 +55,7 @@ module WaterStateType
 
      real(r8), pointer :: excess_ice_col         (:,:)  ! col excess ice (kg/m2) (new) (-nlevsno+1:nlevgrnd)
      real(r8), pointer :: exice_bulk_init        (:)    ! inital value for excess ice (new) (unitless)
+     real(r8), pointer :: h2osfc_col_part        (:)    ! col surface water before redistribution through surface watet flux with excess ice tiling, ice (mm H2O)
 
      type(excessicestream_type), private :: exicestream ! stream type for excess ice initialization NUOPC only
 
@@ -164,6 +165,10 @@ contains
          bounds = bounds, subgrid_level = subgrid_level_column, &
          dim2beg = -nlevsno+1, dim2end = nlevmaxurbgrnd)
     call AllocateVar1d(var = this%exice_bulk_init, name = 'exice_bulk_init', &
+         container = tracer_vars, &
+         bounds = bounds, subgrid_level = subgrid_level_column)
+   
+    call AllocateVar1d(var = this%h2osfc_col_part, name = 'h2osfc_col_part', &
          container = tracer_vars, &
          bounds = bounds, subgrid_level = subgrid_level_column)
 
@@ -533,6 +538,8 @@ contains
       this%dynbal_baseline_ice_col(bounds%begc:bounds%endc) = 0._r8
 
       !Initialize excess ice
+      this%h2osfc_col_part(bounds%begc:bounds%endc) = 0._r8
+
       if (use_excess_ice .and. NLFilename /= '') then
          ! enforce initialization with 0 for everything
          this%excess_ice_col(bounds%begc:bounds%endc,-nlevsno+1:nlevmaxurbgrnd)=0.0_r8
@@ -714,6 +721,7 @@ contains
        ! no need to even define the restart vars
        this%excess_ice_col(bounds%begc:bounds%endc,-nlevsno+1:nlevmaxurbgrnd)=0.0_r8
     else
+      this%h2osfc_col_part(bounds%begc:bounds%endc) = 0.0_r8
        call RestartExcessIceIssue( &
             ncid = ncid, &
             flag = flag, &

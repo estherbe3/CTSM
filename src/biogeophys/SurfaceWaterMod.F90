@@ -378,7 +378,7 @@ contains
          frac_h2osfc      =>    waterdiagnosticbulk_inst%frac_h2osfc_col     , & ! Input:  [real(r8) (:)   ]  fraction of ground covered by surface water (0 to 1)
          frac_h2osfc_nosnow  => waterdiagnosticbulk_inst%frac_h2osfc_nosnow_col,    & ! Input: [real(r8) (:)   ] col fractional area with surface water greater than zero (if no snow present)
          h2osfc           =>    waterstatebulk_inst%h2osfc_col          , & ! Output: [real(r8) (:)   ]  surface water (mm)                                
-         
+         h2osfc_part         =>    waterstatebulk_inst%h2osfc_col_part  , & ! Output: [real(r8) (:)   ]  surface water (mm)  
          qflx_in_h2osfc   => waterfluxbulk_inst%qflx_in_h2osfc_col      , & ! Input:  [real(r8) (:)   ] total surface input to h2osfc
          qflx_h2osfc_surf =>    waterfluxbulk_inst%qflx_h2osfc_surf_col , & ! Output: [real(r8) (:)   ]  surface water runoff (mm H2O /s)                       
          qflx_h2osfc_drain => waterfluxbulk_inst%qflx_h2osfc_drain_col  , & ! Output: [real(r8) (:)   ]  bottom drainage from h2osfc (mm H2O /s)
@@ -389,7 +389,7 @@ contains
          )
 
     dtime = get_step_size_real()
-
+    h2osfc_part= 0.0_r8
     write(iulog,*)"Surface Water1", h2osfc
 
     call QflxH2osfcSurf(bounds, num_hydrologyc, filter_hydrologyc, &
@@ -409,7 +409,34 @@ contains
        c = filter_hydrologyc(fc)
        h2osfc_partial(c) = h2osfc(c) + (qflx_in_h2osfc(c) - qflx_h2osfc_surf(c)) * dtime
     end do
-   write(iulog,*)"Surface Water2", h2osfc_partial
+   write(iulog,*)"Surface Water2", h2osfc_partial, qflx_in_h2osfc, qflx_h2osfc_surf
+      if (use_excess_ice_tiles .and. use_tiles_lateral_water) then 
+         do fc = 1, num_hydrologyc
+            c = filter_hydrologyc(fc)
+            h2osfc(c)=h2osfc_partial(c)
+         end do
+     
+      call Lateral_SurfaceWater_Dis(bounds, num_hydrologyc, filter_hydrologyc, &
+           waterdiagnosticbulk_inst,&
+           h2osfcflag = h2osfcflag, &
+           h2osfc =h2osfc(bounds%begc:bounds%endc),&
+           qflx_lat_h2osfc_surf= qflx_lat_h2osfc_surf(bounds%begc: bounds%endc))
+          !do fc = 1, num_hydrologyc
+           !   c = filter_hydrologyc(fc)
+            !  if (c==1) then  ! substract water from higher tile
+             !   h2osfc(c) = h2osfc(c) +  qflx_lat_h2osfc_surf(c) 
+              !else if (c==2) then 
+               !h2osfc(c) = h2osfc(c) +  qflx_lat_h2osfc_surf(c) * A1/A2
+         write(iulog,*)"Lateral Surface Flux", qflx_lat_h2osfc_surf
+        !end do
+        qflx_lat_h2osfc_surf=qflx_lat_h2osfc_surf/dtime
+        write(iulog,*)"Surface Water3", h2osfc
+      h2osfc_partial=h2osfc
+      write(iulog,*)"Surface Water3", h2osfc_partial
+      endif
+         
+
+
     call truncate_small_values(num_f = num_hydrologyc, filter_f = filter_hydrologyc, &
          lb = bounds%begc, ub = bounds%endc, &
          data_baseline = h2osfc(bounds%begc:bounds%endc), &
@@ -430,27 +457,12 @@ contains
        c = filter_hydrologyc(fc)
        h2osfc(c) = h2osfc_partial(c) - qflx_h2osfc_drain(c) * dtime
     end do
-    write(iulog,*)"Surface Water3", h2osfc
+   
  !Add lateral surface fluxes between two tiles.
-    if (use_excess_ice_tiles .and. use_tiles_lateral_water) then 
-      call Lateral_SurfaceWater_Dis(bounds, num_hydrologyc, filter_hydrologyc, &
-           waterdiagnosticbulk_inst,&
-           h2osfcflag = h2osfcflag, &
-           h2osfc = h2osfc(bounds%begc:bounds%endc),&
-           qflx_lat_h2osfc_surf= qflx_lat_h2osfc_surf(bounds%begc: bounds%endc))
-          !do fc = 1, num_hydrologyc
-           !   c = filter_hydrologyc(fc)
-            !  if (c==1) then  ! substract water from higher tile
-             !   h2osfc(c) = h2osfc(c) +  qflx_lat_h2osfc_surf(c) 
-              !else if (c==2) then 
-               !h2osfc(c) = h2osfc(c) +  qflx_lat_h2osfc_surf(c) * A1/A2
-           write(iulog,*)"Lateral Surface Flux", qflx_lat_h2osfc_surf
-        !end do
-        qflx_lat_h2osfc_surf=qflx_lat_h2osfc_surf/dtime
-      endif
+   
               
-         write(iulog,*)"Lateral Surface Flux", qflx_lat_h2osfc_surf
-         write(iulog,*)"Surface Water2", h2osfc
+         write(iulog,*)"Lateral Surface Flux ADdjusted", qflx_lat_h2osfc_surf
+         write(iulog,*)"Surface Water End", h2osfc
 
 
 
@@ -640,20 +652,25 @@ contains
       c1=lun%coli(l)
       c2=lun%colf(l)
       dztile2 = 0.5_r8 !initdztile2(g) + exice_subs_tot_acc(c2) - exice_subs_tot_acc(c1)  !!!!!needs to be fixed
-      
+      qflx_lat_h2osfc_surf(c2)= 0._r8
+      qflx_lat_h2osfc_surf(c1)= 0._r8
       if (dztile2>0) then  ! Tile1 is higher than Tile 2
       
-         qflx_lat_h2osfc_surf(c2)= h2osfc(c1)!* (A1/A2)
-         qflx_lat_h2osfc_surf(c1)=-h2osfc(c1)
-         h2osfc(c1)=h2osfc(c1)+ qflx_lat_h2osfc_surf(c1)
-         h2osfc(c2)= h2osfc(c2)+ qflx_lat_h2osfc_surf(c2)* (A1/A2)
+         qflx_lat_h2osfc_surf(c2)=-h2osfc(c1)!* (A1/A2)
+         qflx_lat_h2osfc_surf(c1)=h2osfc(c1)
+         h2osfc(c1)=h2osfc(c1)- qflx_lat_h2osfc_surf(c1)
+         h2osfc(c2)= h2osfc(c2)- qflx_lat_h2osfc_surf(c2)* (A1/A2)
       else if (dztile2<0 ) then 
-         qflx_lat_h2osfc_surf(c1)= h2osfc(c2)!"* (A1/A2)
-         qflx_lat_h2osfc_surf(c2)=-h2osfc(c2)
+         qflx_lat_h2osfc_surf(c1)=- h2osfc(c2)!"* (A1/A2)
+         qflx_lat_h2osfc_surf(c2)=h2osfc(c2)
+         h2osfc(c1)=h2osfc(c1)- qflx_lat_h2osfc_surf(c1)* (A2/A1)
+         h2osfc(c2)= h2osfc(c2)- qflx_lat_h2osfc_surf(c2)
       else
          qflx_lat_h2osfc_surf(c1)= 0._r8
          qflx_lat_h2osfc_surf(c2)=0._r8
       endif 
+      write(iulog, *) "Surface flux",c, qflx_lat_h2osfc_surf
+      write(iulog, *) "H20SFC c",c, h2osfc
       
     endif
    enddo

@@ -252,7 +252,7 @@ contains
     endc = bounds%endc
     begg = bounds%begg
     endg = bounds%endg
-
+    write(iulog, *) "call 1 Balance Check"
     call ComputeWaterMassNonLake(bounds, num_nolakec, filter_nolakec, &
          waterstate_inst, waterdiagnostic_inst, &
          subtract_dynbal_baselines = .true., &
@@ -402,7 +402,7 @@ contains
           end if
        end do
     endif
-
+write(iulog, *) "call 2 Balance Check"
     call ComputeWaterMassNonLake(bounds, num_nolakec, filter_nolakec, &
          waterstate_inst, waterdiagnostic_inst, &
          subtract_dynbal_baselines = .false., &
@@ -636,7 +636,7 @@ contains
                   - qflx_snwcp_discarded_liq_col(c) &
                   - qflx_snwcp_discarded_ice_col(c)) * dtime
                   
-                  write(iulog,*)'nstep                     = ',nstep
+                  write(iulog,*)'nstep                     = ',c, nstep
                         write(iulog,*)'errh2o_col                = ',errh2o_col(c)
                         write(iulog,*)'forc_rain                 = ',forc_rain_col(c)*dtime
                         write(iulog,*)'forc_snow                 = ',forc_snow_col(c)*dtime

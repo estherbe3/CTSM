@@ -201,6 +201,8 @@ contains
        waterstate_inst, waterdiagnostic_inst, &
        subtract_dynbal_baselines, &
        liquid_mass, ice_mass)
+
+       use clm_varctl        , only : iulog
     !
     ! !DESCRIPTION:
     ! Compute total water mass for all non-lake columns, separated into liquid and ice
@@ -240,6 +242,7 @@ contains
          snl          =>    col%snl                        , & ! Input:  [integer  (:)   ]  negative number of snow layers
          
          h2osfc       =>    waterstate_inst%h2osfc_col     , & ! Input:  [real(r8) (:)   ]  surface water (mm)
+         h2osfc_part  =>    waterstate_inst%h2osfc_col_part  , & ! Output: [real(r8) (:)   ]  surface water (mm) 
          h2osno_no_layers => waterstate_inst%h2osno_no_layers_col , & ! Input:  [real(r8) (:)   ]  snow water that is not resolved into layers (mm H2O)
          liqcan_patch =>    waterstate_inst%liqcan_patch   , & ! Input:  [real(r8) (:)   ]  canopy liquid water (mm H2O)
          snocan_patch =>    waterstate_inst%snocan_patch   , & ! Input:  [real(r8) (:)   ]  canopy snow water (mm H2O)
@@ -277,13 +280,15 @@ contains
 
        liquid_mass(c) = liquid_mass(c) + liqcan_col(c) + total_plant_stored_h2o(c)
        ice_mass(c) = ice_mass(c) + snocan_col(c)
+       write(iulog,*) "ligwuid mass1", c, liquid_mass(c)
 
        ice_mass(c) = ice_mass(c) + h2osno_no_layers(c)
        do j = snl(c)+1,0
           liquid_mass(c) = liquid_mass(c) + h2osoi_liq(c,j)
+        
           ice_mass(c) = ice_mass(c) + h2osoi_ice(c,j)
        end do
-
+      write(iulog, *) "liquid mass snow", c, j, liquid_mass(c)
        if (col%hydrologically_active(c)) then
           ! It's important to exclude non-hydrologically-active points, because some of
           ! them have wa set, but seemingly incorrectly (set to 4000).
@@ -302,7 +307,9 @@ contains
             .or. col%itype(c) == icol_shadewall .or. col%itype(c) == icol_road_imperv) then
           ! Nothing more to add in this case
        else
-          liquid_mass(c) = liquid_mass(c) + h2osfc(c)
+         write(iulog, *) "liquid mass beg",c, liquid_mass
+          liquid_mass(c) = liquid_mass(c) + h2osfc(c)! - h2osfc_part(c)
+          write(iulog, *) "Water in total liquid water",c,  h2osfc, liquid_mass
        end if
     end do
 

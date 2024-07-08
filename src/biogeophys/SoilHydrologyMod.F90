@@ -484,13 +484,14 @@ contains
 
      do fc = 1, num_hydrologyc
         c = filter_hydrologyc(fc)
+        write(iulog, *) "Total Surface Runof Beg", c, qflx_surf(c),qflx_lat_h2osfc_surf(c)
         ! Depending on whether h2osfcflag is 0 or 1, one of qflx_infl_excess or
         ! qflx_h2osfc_surf will always be 0. But it's safe to just add them both.
-        qflx_surf(c) = qflx_sat_excess_surf(c) + qflx_infl_excess_surf(c) - qflx_h2osfc_surf(c) - qflx_lat_h2osfc_surf(c)
-
-        write(iulog, *) "Total Surface Runof", c, qflx_surf(c)
-        write(iulog, *) "Surface Runoff from Standing water",qflx_h2osfc_surf(c)
+        qflx_surf(c) = qflx_sat_excess_surf(c) + qflx_infl_excess_surf(c) - qflx_h2osfc_surf(c) + qflx_lat_h2osfc_surf(c)
+        write(iulog, *) "test qflx surf", c, qflx_sat_excess_surf(c)+ qflx_lat_h2osfc_surf (c)
+        write(iulog, *) "Total Surface Runof End", c, qflx_surf(c), qflx_sat_excess_surf(c), qflx_infl_excess_surf(c), qflx_h2osfc_surf(c)
         write(iulog, *) "surface Water runnof Tiles", c, qflx_lat_h2osfc_surf(c)
+        write(iulog,*) "Surfwace bulk runoff", qflx_surf*dtime
      end do
 
 
@@ -2371,7 +2372,7 @@ contains
           ! Sub-surface runoff and drainage
 
           qflx_drain(c) = qflx_rsub_sat(c) + rsub_top(c)
-
+            write(iulog, *) "drainage", c, qflx_drain(c), qflx_rsub_sat(c), rsub_top(c)
           ! Set imbalance for snow capping
 
           qflx_qrgwl(c) = qflx_snwcp_liq(c)

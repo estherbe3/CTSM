@@ -143,7 +143,6 @@ contains
               soilhydrology_inst, soilstate_inst, &
               waterstatebulk_inst, waterfluxbulk_inst, waterdiagnosticbulk_inst)
       endif
-      write(iulog, *) "Perch water after Perch Flow Calculation", qflx_drain_perched
 
       do j = 1, nlevgrnd
          do fc = 1, num_nolakec
@@ -164,11 +163,12 @@ contains
             end if
          end do
       end do
-
+      write(iulog, *) "call 1 Hydrology"
       call ComputeWaterMassNonLake(bounds, num_nolakec, filter_nolakec, &
            waterstatebulk_inst, waterdiagnosticbulk_inst, &
            subtract_dynbal_baselines = .false., &
            water_mass = endwb(bounds%begc:bounds%endc))
+      write(iulog, *) "water Balance endw", endwb, begwb
 
       ! Determine wetland and land ice hydrology (must be placed here
       ! since need snow updated from CombineSnowLayers)
@@ -221,10 +221,6 @@ contains
          end if
 
       end do
-
-      write(iulog,*) "Perch water:", qflx_drain_perched
-      write(iulog,*) "Runoff:", qflx_runoff_r
-
     end associate
 
  end subroutine HydrologyDrainage
