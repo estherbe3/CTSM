@@ -1795,7 +1795,7 @@ contains
                            transmis = transmis + 1.e-3_r8*hksat(c_src,k)*dz(c_src,k)
                          endif
                         endif
-                        write(iulog,*) "TRANSMISS: c",c,"c1",c1,"c2",c2,"transmis",transmis,'z(c_src,k)',z(c_src,k),'diff',diff
+                        write(iulog,*) "TRANSMISS: c",c,"c_src",c_src,"c_dst",c_dst,"transmis",transmis,'z(c_src,k)',z(c_src,k),'diff',diff
                         write(iulog,*)'k src',k,k_perch(c_src),k_frost(c_src), "k dst", k, k_perch(c_dst), k_frost(c_dst)
                     enddo
                   endif
@@ -1811,15 +1811,14 @@ contains
                 ! remove drainage from perched saturated layers
                     drainage_tot =  qflx_drain_perched(c_src) * dtime
                     do k = k_perch(c_src), k_frost(c_src)-1
-                    c=c_src
-                    s_y = watsat(c,k) &
-                       * ( 1. - (1.+1.e3*zwt_perched(c)/sucsat(c,k))**(-1./bsw(c,k)))
+                    s_y = watsat(c_src,k) &
+                       * ( 1. - (1.+1.e3*zwt_perched(c)/sucsat(c_src,k))**(-1./bsw(c_src,k)))
                     s_y=max(s_y,params_inst%aq_sp_yield_min)
      
-                    if (k == k_perch(c)) then
-                     drainage_layer=min(drainage_tot,(s_y*(zi(c,k) - zwt_perched(c))*1.e3))
+                    if (k == k_perch(c_src)) then
+                     drainage_layer=min(drainage_tot,(s_y*(zi(c_src,k) - zwt_perched(c_src))*1.e3))
                     else
-                      drainage_layer=min(drainage_tot,(s_y*(dz(c,k))*1.e3))
+                      drainage_layer=min(drainage_tot,(s_y*(dz(c_src,k))*1.e3))
                     endif
      
                      !drainage_layer=max(drainage_layer,0._r8)
@@ -1830,11 +1829,12 @@ contains
                      enddo
                
                     qflx_drain_perched(c_src) = qflx_drain_perched(c_src) - drainage_tot/dtime
+
                     drainage_tot =  qflx_drain_perched(c_dst) * dtime
 
 
                    if (k_perch(c_dst) == k_frost(c_dst)) then
-                        k=1
+                        k=k_perch(c_dst)
                         s_y = watsat(c_dst,k) &
                         * ( 1. - (1.+1.e3*zwt_perched(c_dst)/sucsat(c_dst,k))**(-1./bsw(c_dst,k)))
                         s_y=max(s_y,params_inst%aq_sp_yield_min)

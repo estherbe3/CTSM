@@ -641,6 +641,7 @@ contains
              errh2o_col(c) = 0.0_r8
 
           end if
+          write(iulog, *) "Fluxes in Water Balance",c, dtime, qflx_drain_perched_col(c), qflx_drain_perched_col*dtime
 
        end do
        
