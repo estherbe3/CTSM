@@ -155,6 +155,7 @@ contains
               ig = ig+1
               this%exice_bulk(g) = dataptr1d(ig)
             end do
+            write(iulog, *) "Exces ice Init:" ,this%exice_bulk
           end if
         end do
     end if
@@ -223,6 +224,7 @@ contains
       else 
          exice_bulk_init(c) = 0.0_r8
       endif
+      write(iulog, *) "Exces ice Calc:" ,exice_bulk_init
    enddo
 
    if (use_excess_ice_tiles) then
@@ -241,6 +243,7 @@ contains
             c=lun%colf(l)
             exice_bulk_init(c)=this%exice_bulk(g)*(1._r8-excess_ice_split_factor) ! Will be read from the file
             !call endrun(msg=' CONDITION WORKS '//errMsg(sourcefile, __LINE__))
+            write(iulog, *) "Exces ice Calc:" ,exice_bulk_init
           endif
       enddo
    endif

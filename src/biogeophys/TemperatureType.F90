@@ -743,7 +743,7 @@ contains
             else
                this%t_soisno_col(c,1:nlevgrnd) = 274._r8
                if (use_excess_ice .and. (lun%itype(l) == istsoil .or. lun%itype(l) == istcrop)) then
-                  this%t_soisno_col(c,1:nlevgrnd) = SHR_CONST_TKFRZ - 5.0_r8 !needs to be below freezing to properly initiate excess ice
+                  this%t_soisno_col(c,1:nlevgrnd) = SHR_CONST_TKFRZ - 2.0_r8 !needs to be below freezing to properly initiate excess ice
                end if
             endif
          endif

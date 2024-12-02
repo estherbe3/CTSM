@@ -436,7 +436,13 @@ contains
   subroutine QflxH2osfcSurf(bounds, num_hydrologyc, filter_hydrologyc, &
        h2osfcflag, h2osfc, h2osfc_thresh, frac_h2osfc_nosnow, topo_slope, &
        qflx_h2osfc_surf)
-    !
+    
+       use clm_instur       , only : exice_tile_mask,tile_hightdiff
+       use clm_varctl       , only : use_excess_ice_tiles, use_tiles_lateral_water
+
+
+
+
     ! !DESCRIPTION:
     ! Compute qflx_h2osfc_surf
     !
@@ -456,6 +462,8 @@ contains
     real(r8) :: dtime         ! land model time step (sec)
     real(r8) :: frac_infclust ! fraction of submerged area that is connected
     real(r8) :: k_wet         ! linear reservoir coefficient for h2osfc
+    real(r8) :: maxwater      ! Maximum hight of surface water
+    real(r8) :: hightdiff     ! Hight difference at between the tiles, at the moment
 
     character(len=*), parameter :: subname = 'QflxH2osfcSurf'
     !-----------------------------------------------------------------------
@@ -489,6 +497,41 @@ contains
        else
           qflx_h2osfc_surf(c)= 0._r8
        endif
+
+
+       !for Tiling, drain water above a limit
+
+       if ( use_excess_ice_tiles ) then 
+         l = col%landunit(c)               
+         g = col%gridcell(c)    
+         associate(   
+
+         exice_subs_tot_acc =>    waterdiagnosticbulk_inst%exice_subs_tot_acc , & 
+         )
+      
+         initdztile2(bounds%begg:bounds%endg) = tile_hightdiff(bounds%begg:bounds%endg)
+
+         if (lun%itype(col%landunit(c)) == istsoil .and.lun%ncolumns(l) == 2 .and. exice_tile_mask(g) == 1) then  
+            
+            c1=lun%coli(l)                  
+            c2=lun%colf(l)
+            hightdiff = (initdztile2(g) + exice_subs_tot_acc(c2)) - exice_subs_tot_acc(c1)
+            if (hightdiff< maxwater) then
+               maxwater=hightdiff
+            end if
+
+            if (h2osfc(c)> maxwater) then 
+            
+              
+               qflx_h2osfc_surf= (h2osfc(c)-maxwater)
+
+            end if 
+
+       end if
+
+
+       end associate
+      end if 
 
        ! cutoff lower limit
        if ( qflx_h2osfc_surf(c) < 1.0e-8) then
