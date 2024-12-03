@@ -104,6 +104,9 @@ module WaterFluxType
      real(r8), pointer :: qflx_irrig_drip_patch     (:)   ! patch drip irrigation
      real(r8), pointer :: qflx_irrig_sprinkler_patch(:)   ! patch sprinkler irrigation
 
+     !Excessice Tiling::
+     real(r8), pointer :: qflx_latWater_col          (:)  ! lateral perch water flux due to lateral water flux
+
      ! Objects that help convert once-per-year dynamic land cover changes into fluxes
      ! that are dribbled throughout the year
      type(annual_flux_dribbler_type) :: qflx_liq_dynbal_dribbler
@@ -275,7 +278,7 @@ contains
     call AllocateVar1d(var = this%qflx_drain_col, name = 'qflx_drain_col', &
          container = tracer_vars, &
          bounds = bounds, subgrid_level = subgrid_level_column)
-    call AllocateVar1d(var = this%qflx_drain_perched_col, name = 'qflx_drain_perched_col', &
+    call AllocateVar1d(var = this%qflx_latWater_col, name = 'qflx_latWater_col', &
          container = tracer_vars, &
          bounds = bounds, subgrid_level = subgrid_level_column)
     call AllocateVar1d(var = this%qflx_top_soil_col, name = 'qflx_top_soil_col', &
@@ -379,6 +382,9 @@ contains
          name = this%info%fname('qflx_ice_dynbal'), &
          units = 'mm H2O')
 
+     call AllocateVar1d(var = this%qflx_drain_perched_col, name = 'qflx_drain_perched_col', &
+         container = tracer_vars, &
+         bounds = bounds, subgrid_level = subgrid_level_column)
   end subroutine InitAllocate
 
   !------------------------------------------------------------------------
@@ -799,6 +805,16 @@ contains
          avgflag='A', &
          long_name=this%info%lname('water added via sprinkler irrigation'), &
          ptr_patch=this%qflx_irrig_sprinkler_patch, default='inactive')
+
+         this%qflx_latWater_col(begc:endc) = spval
+    call hist_addfld1d ( &
+         fname=this%info%fname('LATWAT_FLUX'),  &
+         units='mm/s',  &
+         avgflag='A', &
+         long_name=this%info%lname('lateral water flux'), &
+         ptr_col=this%qflx_latWater_col, c2l_scale_type='urbanf',&
+         default='inactive')
+
 
   end subroutine InitHistory
   

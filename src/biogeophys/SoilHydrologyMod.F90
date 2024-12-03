@@ -1718,7 +1718,10 @@ contains
           h2osoi_liq         =>    waterstatebulk_inst%h2osoi_liq_col          , & ! Output: [real(r8) (:,:) ] liquid water (kg/m2)                            
           h2osoi_ice         =>    waterstatebulk_inst%h2osoi_ice_col          , & ! Output: [real(r8) (:,:) ] ice lens (kg/m2)       
                                    
-          exice_subs_tot_acc =>    waterdiagnosticbulk_inst%exice_subs_tot_acc  & ! Input: [real(r8) (:) ]  subsidence due to excess ice melt (m)   KSA
+          exice_subs_tot_acc =>    waterdiagnosticbulk_inst%exice_subs_tot_acc , & ! Input: [real(r8) (:) ]  subsidence due to excess ice melt (m)   KSA
+          
+          qflx_latwater =>    waterfluxbulk_inst%qflx_latWater_col    &   !Output [real r8(:)] lateral water flux 
+          
           )
           
        ! Get time step
@@ -1748,6 +1751,7 @@ contains
       
       if ( use_excess_ice_tiles .and. use_tiles_lateral_water) then  
          qflx_drain_perched = 0._r8
+         qflx_latwater = 0._r8
          outer: do fc = 1, num_hydrologyc
          c = filter_hydrologyc(fc)
          
@@ -1868,6 +1872,7 @@ contains
                   
                   !enddo
                   write(iulog, *) "Drainage", qflx_drain_perched
+                  qflx_latwater= qflx_drain_perched
 
                  
                    
