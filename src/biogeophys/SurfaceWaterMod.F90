@@ -497,10 +497,8 @@ contains
 
 
 
-       end associate
-      end if 
-
-       ! cutoff lower limit
+    
+            ! cutoff lower limit
        if ( qflx_h2osfc_surf(c) < 1.0e-8) then
           qflx_h2osfc_surf(c) = 0._r8
        end if
