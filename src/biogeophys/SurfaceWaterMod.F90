@@ -25,6 +25,8 @@ module SurfaceWaterMod
   use WaterDiagnosticBulkType     , only : waterdiagnosticbulk_type
   use WaterTracerUtils            , only : CalcTracerFromBulk
 
+  use clm_varctl                  , only : iulog, use_excess_ice, use_excess_ice_tiles, use_tiles_lateral_water!
+
   implicit none
   save
   private
@@ -38,6 +40,7 @@ module SurfaceWaterMod
   private :: BulkDiag_FracH2oSfc          ! Determine fraction of land surfaces which are submerged
   private :: QflxH2osfcSurf      ! Compute qflx_h2osfc_surf
   private :: QflxH2osfcDrain     ! Compute qflx_h2osfc_drain
+  private :: QLandoverflow       ! Compute possible land overflow for tiling
   type, private :: params_type
      real(r8) :: pc              ! Threshold probability for surface water (unitless)
      real(r8) :: mu              ! Connectivity exponent for surface water (unitless)
@@ -379,7 +382,8 @@ contains
          qflx_h2osfc_drain => waterfluxbulk_inst%qflx_h2osfc_drain_col  , & ! Output: [real(r8) (:)   ]  bottom drainage from h2osfc (mm H2O /s)
          
          h2osfc_thresh    =>    soilhydrology_inst%h2osfc_thresh_col, & ! Input:  [real(r8) (:)   ]  level at which h2osfc "percolates"                
-         h2osfcflag       =>    soilhydrology_inst%h2osfcflag         & ! Input:  integer
+         h2osfcflag       =>    soilhydrology_inst%h2osfcflag      ,   & ! Input:  integer
+         exice_subs_tot_acc =>    waterdiagnosticbulk_inst%exice_subs_tot_acc &
          )
 
     dtime = get_step_size_real()
@@ -391,7 +395,27 @@ contains
          frac_h2osfc_nosnow = frac_h2osfc_nosnow(bounds%begc:bounds%endc), &
          topo_slope = col%topo_slope(bounds%begc:bounds%endc), &
          qflx_h2osfc_surf = qflx_h2osfc_surf(bounds%begc:bounds%endc))
-
+   
+     do fc = 1, num_hydrologyc
+            c = filter_hydrologyc(fc)
+            h2osfc_partial(c) = h2osfc(c) + (qflx_in_h2osfc(c) - qflx_h2osfc_surf(c)) * dtime
+     end do
+     write(iulog,*) "before drainage"
+     write(iulog,*) "surface water",c, h2osfc
+     write(iulog,*) "surface flux",c, qflx_h2osfc_surf
+   
+      
+      if (use_excess_ice_tiles .and. use_tiles_lateral_water) then 
+            write(iulog,*) "test"
+            call QLandoverflow(bounds, num_hydrologyc, filter_hydrologyc, &
+                  h2osfc = h2osfc_partial(bounds%begc:bounds%endc),&
+                  frac_h2osfc = frac_h2osfc(bounds%begc:bounds%endc), &
+                  qflx_h2osfc_surf = qflx_h2osfc_surf(bounds%begc:bounds%endc), &
+                  exice_subs_tot_acc=exice_subs_tot_acc(bounds%begc:bounds%endc))
+                  
+                  !waterstatebulk_inst,&
+                  !waterdiagnosticbulk_inst, waterdiagnosticbulk_inst)
+         endif
     ! Update h2osfc prior to calculating bottom drainage from h2osfc.
     !
     ! This could be removed if we wanted to do a straight forward Euler, and/or set
@@ -402,10 +426,17 @@ contains
        h2osfc_partial(c) = h2osfc(c) + (qflx_in_h2osfc(c) - qflx_h2osfc_surf(c)) * dtime
     end do
 
+
+    write(iulog,*) "after drainage"
+     write(iulog,*) "surface water",c, h2osfc
+     write(iulog,*) "surface flux",c, qflx_h2osfc_surf
+
     call truncate_small_values(num_f = num_hydrologyc, filter_f = filter_hydrologyc, &
          lb = bounds%begc, ub = bounds%endc, &
          data_baseline = h2osfc(bounds%begc:bounds%endc), &
          data = h2osfc_partial(bounds%begc:bounds%endc))
+   
+  
 
     call QflxH2osfcDrain(bounds, num_hydrologyc, filter_hydrologyc, &
          h2osfcflag = h2osfcflag, &
@@ -558,4 +589,87 @@ contains
 
   end subroutine QflxH2osfcDrain
  
+
+
+  subroutine QLandoverflow(bounds, num_hydrologyc, filter_hydrologyc, &
+   h2osfc, frac_h2osfc,   qflx_h2osfc_surf,exice_subs_tot_acc)! waterstatebulk_inst,&
+   !waterdiagnosticbulk_inst, waterfluxbulk_inst)
+  
+  
+  
+  
+     ! DESCRIPTION:
+     !     Calculate Water overflow, between Tiles.
+     
+     ! USES:
+  
+     !use clm_varctl      , only : iulog
+     !use GridcellType    , only : grc
+     !use LandunitType    , only : lun
+     !use abortutils      , only : endrun
+  
+     !use clm_instur      , only : exice_tile_mask
+     use clm_instur      , only : exice_tile_mask, tile_hightdiff
+     use LandunitType    , only : lun
+     use landunit_varcon , only : istsoil
+  
+    ! !ARGUMENTS:
+     type(bounds_type) , intent(in)    :: bounds          
+     integer                  , intent(in)    :: num_hydrologyc       ! number of column soil points in column filter
+     integer                  , intent(in)    :: filter_hydrologyc(:) ! column filter for soil points
+     real(r8)          , intent(inout)    :: h2osfc( bounds%begc: )             ! surface water (mm)
+     real(r8)          , intent(in)    :: frac_h2osfc( bounds%begc: )        ! fraction of ground covered by surface water (0 to 1)
+     real(r8)          , intent(in)    :: exice_subs_tot_acc(bounds%begc:)
+     real(r8)          , intent(inout) :: qflx_h2osfc_surf( bounds%begc: )   ! surface water runoff (mm H2O /s)
+     !type(waterstatebulk_type)    , intent(inout) :: waterstatebulk_inst
+     !type(waterfluxbulk_type)     , intent(inout) :: waterfluxbulk_inst
+     !type(waterdiagnosticbulk_type) ,  intent(inout) :: waterdiagnosticbulk_inst !KSA
+     !
+     ! !LOCAL VARIABLES:
+     
+     integer  :: c, c1, c2, g, l, fc      ! indices    KSA
+     real(r8) :: initdztile2(bounds%begg:bounds%endg) ! Initial elevation difference between top of tile 2 compared to tile 1 KSA 
+     real(r8) :: dztile2    
+     real(r8) :: dtime         ! land model time step (sec)
+  
+     character(len=*), parameter :: subname = 'QLandoverflow'
+  
+   
+  
+        SHR_ASSERT_ALL_FL((ubound(h2osfc) == (/bounds%endc/)), sourcefile, __LINE__)
+        SHR_ASSERT_ALL_FL((ubound(frac_h2osfc) == (/bounds%endc/)), sourcefile, __LINE__)
+        SHR_ASSERT_ALL_FL((ubound(qflx_h2osfc_surf) == (/bounds%endc/)), sourcefile, __LINE__)
+
+     dtime = get_step_size_real()
+  
+     do fc = 1, num_hydrologyc
+        c = filter_hydrologyc(fc)
+        
+        l = col%landunit(c)               
+        g = col%gridcell(c)    
+  
+        initdztile2(bounds%begg:bounds%endg) = tile_hightdiff(bounds%begg:bounds%endg) !  KSA 
+       
+        if (lun%itype(col%landunit(c)) == istsoil .and.lun%ncolumns(l) == 2 .and. exice_tile_mask(g) == 1) then  
+           c1=lun%coli(l)                  
+           c2=lun%colf(l)                
+           dztile2 = (initdztile2(g) + exice_subs_tot_acc(c2)) - exice_subs_tot_acc(c1)
+           
+           if (dztile2< h2osfc(c2)) then
+              
+              qflx_h2osfc_surf(c2)=qflx_h2osfc_surf(c2)+ (h2osfc(c2)- dztile2)/dtime
+              !h2osfc(c2)=dztile2
+  
+           end if  
+        end if
+      enddo
+  
+  
+  
+  
+  
+  end subroutine QLandoverflow
+
+
+
 end module SurfaceWaterMod
