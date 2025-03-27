@@ -867,10 +867,10 @@ contains
             end if
          end do
       end do
+      write(iulog,*) '    tkmg:', tkmg, 'tkdry: ', tkdry, 'csol (heat cap):', csol,'tksatu', tksatu,'thk:', thk  
       call t_stopf( 'SoilThermProp' )
-
-    end associate
-
+      end associate
+    
   end subroutine SoilThermProp
 
   !-----------------------------------------------------------------------
@@ -3031,6 +3031,7 @@ end subroutine SetMatrix_Snow
  
    
    !write(iulog,*) 'columtiles', col%a_tile
+   write(iulog,*) 'thk'
 
    do g = bounds%begg,bounds%endg
       l = grc%landunit_indices(istsoil,g)            
@@ -3111,13 +3112,9 @@ end subroutine SetMatrix_Snow
          eflx_lateral_col(c1) = eflx_lateral_col(c1) + hhf1(j)
          eflx_lateral_col(c2) = eflx_lateral_col(c2) + hhf2(j)
          if (eflx_lateral_col(c1) == spval) then
-            write(iulog,*) 'eflx_lateral_col is nan on tile 1'
-            write(iulog,*) 'at layer: ', j
             call endrun(subgrid_index=c1, subgrid_level=subgrid_level_column, msg=errmsg(sourcefile, __LINE__))
          endif
          if (eflx_lateral_col(c2) == spval) then
-            write(iulog,*) 'eflx_lateral_col is nan on tile 2'
-            write(iulog,*) 'at layer: ', j
             call endrun(subgrid_index=c2, subgrid_level=subgrid_level_column, msg=errmsg(sourcefile, __LINE__))
          endif
          enddo

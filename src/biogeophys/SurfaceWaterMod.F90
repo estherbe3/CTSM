@@ -427,10 +427,6 @@ contains
     end do
 
 
-    write(iulog,*) "after drainage"
-     write(iulog,*) "surface water",c, h2osfc
-     write(iulog,*) "surface flux",c, qflx_h2osfc_surf
-
     call truncate_small_values(num_f = num_hydrologyc, filter_f = filter_hydrologyc, &
          lb = bounds%begc, ub = bounds%endc, &
          data_baseline = h2osfc(bounds%begc:bounds%endc), &
@@ -631,6 +627,7 @@ contains
      real(r8) :: initdztile2(bounds%begg:bounds%endg) ! Initial elevation difference between top of tile 2 compared to tile 1 KSA 
      real(r8) :: dztile2    
      real(r8) :: dtime         ! land model time step (sec)
+     real(r8) :: dtrsshover   ! threshold of hight difference, where discharged should appear
   
      character(len=*), parameter :: subname = 'QLandoverflow'
   
@@ -642,6 +639,8 @@ contains
 
      dtime = get_step_size_real()
   
+     dtrsshover = 100_r8  !if hight difference is lower than 100 mm no overflow should accure
+
      do fc = 1, num_hydrologyc
         c = filter_hydrologyc(fc)
         
@@ -654,13 +653,33 @@ contains
            c1=lun%coli(l)                  
            c2=lun%colf(l)                
            dztile2 = (initdztile2(g) + exice_subs_tot_acc(c2)) - exice_subs_tot_acc(c1)
+           dztile2= dztile2 * 1000_r8
+
+           if(dztile2>0 .and. dztile2>dtrsshover) then       !c2 is lower tile
            
-           if (dztile2< h2osfc(c2)) then
-              
-              qflx_h2osfc_surf(c2)=qflx_h2osfc_surf(c2)+ (h2osfc(c2)- dztile2)/dtime
-              !h2osfc(c2)=dztile2
-  
-           end if  
+               if (dztile2< h2osfc(c2)) then
+                  
+                  qflx_h2osfc_surf(c2)=qflx_h2osfc_surf(c2)+ (h2osfc(c2)- dztile2)/dtime
+                  !h2osfc(c2)=dztile2
+      
+               end if  
+            
+            endif
+
+            if(dztile2<0 .and. abs(dztile2)>dtrsshover) then       !c2 is lower tile
+           
+               if (abs(dztile2)< h2osfc(c1)) then
+                  
+                  qflx_h2osfc_surf(c1)=qflx_h2osfc_surf(c1)+ (h2osfc(c1)- dztile2)/dtime
+                  !h2osfc(c2)=dztile2
+      
+               end if  
+            
+            endif
+
+
+
+
         end if
       enddo
   
