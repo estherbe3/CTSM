@@ -50,11 +50,13 @@ contains
     use fileutils   , only : getfil
     use spmdMod     , only : masterproc
     use domainMod   , only : ldomain
+    use clm_varctl  , only : use_excess_ice_tiles    
     use ncdio_pio
 !
 ! !ARGUMENTS:
     implicit none
     real(r8), pointer :: organic(:,:)         ! organic matter density (kg/m3)
+    real(r8), pointer :: organic_t2(:,:)         ! organic matter density (kg/m3)
 !
 ! !CALLED FROM:
 ! subroutine initialize in module initializeMod
@@ -101,6 +103,13 @@ contains
        call ncd_io(ncid=ncid, varname='ORGANIC', flag='read', data=organic, &
             dim1name=grlnd, readvar=readvar)
        if (.not. readvar) call endrun('organicrd: errror reading ORGANIC')
+
+       !read organic matter content for second tile
+      if  (use_excess_ice_tiles) then
+      organic_t2(:,:)   = 0._r8
+         call ncd_io(ncid=ncid, varname='ORGANIC_TILE2', flag='read', data=organic_t2, &
+            dim1name=grlnd, readvar=readvar)
+      end if
 
        if ( masterproc )then
           write(iulog,*) 'Successfully read organic matter data'
