@@ -867,7 +867,8 @@ contains
             end if
          end do
       end do
-      write(iulog,*) '    tkmg:', tkmg, 'tkdry: ', tkdry, 'csol (heat cap):', csol,'tksatu', tksatu,'thk:', thk  
+      write(iulog,*) 'watsat col in soil thermanl properties', watsat (1,1:54)
+      write(iulog,*) 'watsat col in soil thermanl properties', watsat (2,1:54)
       call t_stopf( 'SoilThermProp' )
       end associate
     
