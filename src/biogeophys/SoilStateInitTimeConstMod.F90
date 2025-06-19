@@ -370,9 +370,11 @@ contains
             call ncd_io(ncid=ncid, varname='PCT_CLAY', flag='read', data=clay3d_t2, dim1name=grlnd, readvar=readvar)
           end if
       !call SoilStateInitTimeConst_ExiceTiling(bounds, soilstate_inst, nlfilename)
+   
+      write(iulog,*) "succesfully read in tiling data"
+
    end if
 
-   
 
     do p = begp,endp
        g = patch%gridcell(p)
@@ -633,10 +635,10 @@ contains
                      (0.1_r8 / (soilstate_inst%hksat_col(c,lev)*secspday))**(1._r8/(2._r8*soilstate_inst%bsw_col(c,lev)+3._r8))
              end if
           end do
-          write(iulog,*) 'Read normal soil data, start tiling', lev
+          write(iulog,*) 'Read normal soil data, start tiling'
                     !!!!!!!!!!!!!!!!!!! read in different soil values for excess ice
           
-          if (use_excess_ice_tiles .and. lun%itype(l)==istsoil  .and. lun%ncolumns(l) == 2 &
+         if (use_excess_ice_tiles .and. lun%itype(l)==istsoil  .and. lun%ncolumns(l) == 2 &
           .and. exice_tile_mask(g) == 1) then 
            
             do lev = 1,nlevgrnd
@@ -647,6 +649,7 @@ contains
                   sand_t2 = sand3d_t2(g,1)
                   om_frac_t2 = min(params_inst%om_frac_sf*organic3d_t2(g,1)/organic_max, 1._r8)
                   om_frac_t2=0.3_r8
+               
                else if (lev <= nlevsoi) then
                   found = 0  ! reset value
                   if (zsoi(lev) <= zisoifl(1)) then
@@ -655,12 +658,14 @@ contains
                      sand_t2 = sand3d_t2(g,1)
                      om_frac_t2 = min(params_inst%om_frac_sf*organic3d_t2(g,1)/organic_max, 1._r8)
                      found = 1
+                     
                   else if (zsoi(lev) > zisoifl(nlevsoifl)) then
                        ! Search below the dataset's range of zisoifl depths
                      clay_t2 = clay3d_t2(g,nlevsoifl)
                      sand_t2 = sand3d_t2(g,nlevsoifl)
                      om_frac_t2 = min(params_inst%om_frac_sf*organic3d_t2(g,nlevsoifl)/organic_max, 1._r8)
                      found = 1
+                     
                   else
                      ! For remaining model soil levels, search within dataset's
                      ! range of zisoifl values. Look for model node depths
@@ -671,20 +676,22 @@ contains
                            sand_t2 = sand3d_t2(g,j+1)
                            om_frac_t2 = min(params_inst%om_frac_sf*organic3d_t2(g,j+1)/organic_max, 1._r8)
                            found = 1
+                         
                         endif
                         if (found == 1) exit  ! no need to stay in the loop
                      end do
                   end if
-                  write(iulog,*) 'Test1', lev
+                 
                   ! If not found, then something's wrong
                   if (found == 0) then
-                     write(iulog,*) 'For model soil level =', lev
+                     write(iulog,*) 'For model soil level =',lev
                      call endrun(msg="ERROR finding a soil dataset depth to interpolate the model depth to"//errmsg(sourcefile, __LINE__))
                   end if
                else  ! if lev > nlevsoi
                   clay_t2 = clay3d_t2(g,nlevsoifl)
                   sand_t2 = sand3d_t2(g,nlevsoifl)
                   om_frac_t2 = 0._r8
+                 
                endif
       
                if (organic_frac_squared) then
@@ -693,6 +700,7 @@ contains
         
                
                if (c==c2) then  
+                   write(iulog,*) 'begin setting soil parameters for c2'
                   !ipedof=get_ipedof(0)
                   !call pedotransf(ipedof, sand, clay, &
                    !    soilstate_inst%watsat_col(c,lev), soilstate_inst%bsw_col(c,lev), soilstate_inst%sucsat_col(c,lev), xksat)
@@ -757,10 +765,11 @@ contains
                        (0.1_r8 / (soilstate_inst%hksat_col(c,lev)*secspday))**(1._r8/(2._r8*soilstate_inst%bsw_col(c,lev)+3._r8))
                end if
             end do
-            deallocate(sand3d_t2, clay3d_t2, organic3d_t2)
+         else   
+          write(iulog,*) 'Skiped Soil data tiling'  
          end if 
-
-
+         
+         
 
 
           ! Urban pervious and impervious road
@@ -881,11 +890,13 @@ contains
     ! --------------------------------------------------------------------
     ! Deallocate memory
     ! --------------------------------------------------------------------
-
-    deallocate(sand3d, clay3d, organic3d)
-    deallocate(zisoifl, zsoifl)
-    write(iulog,*) 'reachedm end Soil stat init'
-
+    if (use_excess_ice_tiles) then 
+    deallocate(sand3d_t2, clay3d_t2, organic3d_t2)
+    endif
+      deallocate(zisoifl, zsoifl)
+   
+    write(iulog,*) 'reached end Soil stat init'
+   deallocate(sand3d, clay3d, organic3d)
   end subroutine SoilStateInitTimeConst
 
 end module SoilStateInitTimeConstMod
