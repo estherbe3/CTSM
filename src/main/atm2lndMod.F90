@@ -278,7 +278,7 @@ contains
            eflx_sh_precip_conversion(bounds%begc:bounds%endc))
             
      !Horizontal snow redistribution based on excess ice and snow 
-      SnowDepthTreshold = 0.05_r8
+      SnowDepthTreshold = 0.2_r8
       if ( use_excess_ice_tiles .and. use_tiles_snow) then 
          initdztile2(bounds%begg:bounds%endg) =  tile_hightdiff(bounds%begg:bounds%endg)
          do g = bounds%begg,bounds%endg
